@@ -3,8 +3,8 @@ import JourneySection from "../ui/JourneySection";
 
 export default function FutureSection() {
   return (
-    <JourneySection id="future" center={0.92} ascent minHeight="min-h-[140vh]">
-      <div className="w-full max-w-[1320px] mx-auto flex flex-col gap-10">
+    <JourneySection id="future" center={0.92} ascent minHeight="min-h-[250vh]">
+      <div className="w-full max-w-[1320px] mx-auto flex flex-col gap-10 sticky top-[10vh]">
 
         {/* Header */}
         <div className="p-8 md:p-10 rounded-2xl border border-white/12 bg-white/[0.04] max-w-[860px]">

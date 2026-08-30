@@ -27,6 +27,6 @@ export const companyAssets = {
     projects: {
         octaClinic: Object.entries(projectImages).find(([path]) => path.includes("octa_clinic"))?.[1] ?? "",
         onlineCoaching: Object.entries(projectImages).find(([path]) => path.includes("online_coaching"))?.[1] ?? "",
-        medicalClub: Object.entries(projectImages).find(([path]) => path.includes("medical_club"))?.[1] ?? "",
+        portfolio: Object.entries(projectImages).find(([path]) => path.toLowerCase().includes("mazenportfolioimages"))?.[1] ?? "",
     },
 };

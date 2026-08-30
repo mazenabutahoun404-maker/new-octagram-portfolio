@@ -67,7 +67,8 @@ declare global {
   }
 }
 
-const coverRects = new WeakMap<HTMLImageElement, CoverRect>();
+
+
 const isDevelopment = import.meta.env.DEV;
 
 const clamp = (value: number, min = 0, max = 1) =>
@@ -199,48 +200,6 @@ function createLivingNetwork(
   return strands;
 }
 
-function cover(
-  context: CanvasRenderingContext2D,
-  image: HTMLImageElement,
-  viewportWidth: number,
-  viewportHeight: number,
-  alpha = 1,
-) {
-  if (!image.naturalWidth || !image.naturalHeight || alpha <= 0) return;
-
-  let rect = coverRects.get(image);
-  if (
-    !rect ||
-    rect.viewportWidth !== viewportWidth ||
-    rect.viewportHeight !== viewportHeight ||
-    rect.naturalWidth !== image.naturalWidth ||
-    rect.naturalHeight !== image.naturalHeight
-  ) {
-    const scale = Math.max(
-      viewportWidth / image.naturalWidth,
-      viewportHeight / image.naturalHeight,
-    );
-    const drawWidth = image.naturalWidth * scale;
-    const drawHeight = image.naturalHeight * scale;
-    rect = {
-      viewportWidth,
-      viewportHeight,
-      naturalWidth: image.naturalWidth,
-      naturalHeight: image.naturalHeight,
-      x: (viewportWidth - drawWidth) / 2,
-      y: (viewportHeight - drawHeight) / 2,
-      width: drawWidth,
-      height: drawHeight,
-    };
-    coverRects.set(image, rect);
-  }
-
-  context.save();
-  context.globalAlpha = alpha;
-  context.drawImage(image, rect.x, rect.y, rect.width, rect.height);
-  context.restore();
-}
-
 export default function OceanJourneyCanvas({
   depthOutputRef,
   audioGraphRef,
@@ -258,12 +217,6 @@ export default function OceanJourneyCanvas({
 
     const root = document.documentElement;
     const profile = detectCapability();
-    const loaded = new Map<string, LoadedFrame>();
-    const pending = new Map<string, Promise<HTMLImageElement | null>>();
-    const activeImages = new Map<string, HTMLImageElement>();
-    const cancelled = new Set<string>();
-    const failed = new Set<string>();
-    const selectionCache = new Map<string, SelectedFrames>();
     const navButtons = Array.from(
       document.querySelectorAll<HTMLButtonElement>("[data-journey-stop]"),
     );
@@ -330,252 +283,6 @@ export default function OceanJourneyCanvas({
     let nextAmbientPulseAt = performance.now() + 5200;
     let visionEntryStart = Number.NEGATIVE_INFINITY;
     let visionEntryArmed = true;
-    let retainedFrame: HTMLImageElement | null = null;
-    const maxConcurrentLoads =
-      profile.quality === "high" ? 24 : profile.quality === "medium" ? 14 : 8;
-
-    const getSelection = (chapter: SequenceChapter) => {
-      const cacheKey = `${chapter.id}:${width}:${dpr}:${profile.saveData}`;
-      const cached = selectionCache.get(cacheKey);
-      if (cached) return cached;
-      const selected = selectFrames(
-        chapter,
-        width,
-      );
-      selectionCache.set(cacheKey, selected);
-      return selected;
-    };
-
-    const frameKey = (
-      chapter: SequenceChapter,
-      selected: SelectedFrames,
-      index: number,
-    ) => `${chapter.id}:${selected.variant}:${index}`;
-
-    const cancelPendingFrame = (key: string) => {
-      const image = activeImages.get(key);
-      if (!image) return;
-      cancelled.add(key);
-      image.src = "";
-      activeImages.delete(key);
-      pending.delete(key);
-    };
-
-    const trimCache = (
-      activeChapter?: SequenceChapter,
-      activeFrame = 0,
-    ) => {
-      if (activeChapter) {
-        const activeChapterIndex = sequences.indexOf(activeChapter);
-        loaded.forEach((_entry, key) => {
-          const [chapterId, , frameValue] = key.split(":");
-          const chapterIndex = sequences.findIndex(
-            (chapter) => chapter.id === chapterId,
-          );
-          const frameIndex = Number(frameValue);
-          const isFarChapter =
-            chapterIndex >= 0 &&
-            Math.abs(chapterIndex - activeChapterIndex) > 1;
-          const isOldCurrentFrame =
-            chapterId === activeChapter.id &&
-            Number.isFinite(frameIndex) &&
-            Math.abs(frameIndex - activeFrame) > profile.preloadRadius * 4 &&
-            loaded.size > profile.maxCachedFrames * 0.72;
-          if (isFarChapter || isOldCurrentFrame) loaded.delete(key);
-        });
-        pending.forEach((_request, key) => {
-          const chapterId = key.split(":")[0];
-          const chapterIndex = sequences.findIndex(
-            (chapter) => chapter.id === chapterId,
-          );
-          if (
-            chapterIndex >= 0 &&
-            Math.abs(chapterIndex - activeChapterIndex) > 1
-          ) {
-            cancelPendingFrame(key);
-          }
-        });
-      }
-
-      if (loaded.size <= profile.maxCachedFrames) return;
-      const oldest = [...loaded.entries()]
-        .sort((left, right) => left[1].touchedAt - right[1].touchedAt)
-        .slice(0, loaded.size - profile.maxCachedFrames);
-      oldest.forEach(([key]) => loaded.delete(key));
-    };
-
-    const requestFrame = (
-      chapter: SequenceChapter,
-      selected: SelectedFrames,
-      requestedIndex: number,
-      highPriority = false,
-    ) => {
-      if (!selected.sources.length) return Promise.resolve(null);
-      const index = Math.round(
-        clamp(requestedIndex, 0, selected.sources.length - 1),
-      );
-      const key = frameKey(chapter, selected, index);
-      if (failed.has(key)) return Promise.resolve(null);
-
-      const cached = loaded.get(key);
-      if (cached) {
-        cached.touchedAt = performance.now();
-        return Promise.resolve(cached.image);
-      }
-
-      const activeRequest = pending.get(key);
-      if (activeRequest) return activeRequest;
-
-      if (pending.size >= maxConcurrentLoads) {
-        if (!highPriority) return Promise.resolve(null);
-        const oldestPendingKey = pending.keys().next().value as
-          | string
-          | undefined;
-        if (oldestPendingKey) cancelPendingFrame(oldestPendingKey);
-      }
-
-      const request = new Promise<HTMLImageElement>((resolve, reject) => {
-        const image = new Image();
-        image.decoding = "async";
-        image.onload = () => resolve(image);
-        image.onerror = reject;
-        activeImages.set(key, image);
-        image.src = selected.sources[index];
-      })
-        .then(async (image) => {
-          try {
-            await image.decode();
-          } catch {
-            // A completed onload still guarantees that the frame is drawable.
-          }
-          activeImages.delete(key);
-          if (cancelled.delete(key)) {
-            pending.delete(key);
-            image.src = "";
-            return null;
-          }
-          if (disposed) {
-            pending.delete(key);
-            image.src = "";
-            return null;
-          }
-          loaded.set(key, { image, touchedAt: performance.now() });
-          pending.delete(key);
-          if (chapter.id === sequences[0]?.id && index <= 6 && !sequenceReady) {
-            sequenceReady = true;
-            root.style.setProperty("--sequence-ready", "1");
-          }
-          trimCache();
-          return image;
-        })
-        .catch((error: unknown) => {
-          pending.delete(key);
-          activeImages.delete(key);
-          if (cancelled.delete(key) || disposed) return null;
-          failed.add(key);
-          if (isDevelopment && !disposed) {
-            console.warn(`[ocean] Failed to decode ${key}; using a nearby frame.`, error);
-          }
-          return null;
-        });
-
-      pending.set(key, request);
-      return request;
-    };
-
-    const nearestLoaded = (
-      chapter: SequenceChapter,
-      selected: SelectedFrames,
-      targetIndex: number,
-    ) => {
-      const searchRadius = Math.max(profile.preloadRadius * 3, 18);
-      for (let offset = 0; offset <= searchRadius; offset += 1) {
-        const candidates =
-          offset === 0
-            ? [targetIndex]
-            : [
-              targetIndex + offset * scrollDirection,
-              targetIndex - offset * scrollDirection,
-            ];
-        for (const index of candidates) {
-          if (index < 0 || index >= selected.sources.length) continue;
-          const cached = loaded.get(frameKey(chapter, selected, index));
-          if (cached) {
-            cached.touchedAt = performance.now();
-            return cached.image;
-          }
-        }
-      }
-      return null;
-    };
-
-    const preloadWindow = (
-      chapter: SequenceChapter,
-      selected: SelectedFrames,
-      centerIndex: number,
-      direction: 1 | -1,
-    ) => {
-      const priority = [centerIndex];
-      for (let offset = 1; offset <= profile.preloadRadius; offset += 1) {
-        priority.push(centerIndex + direction * offset);
-        priority.push(centerIndex - direction * offset);
-      }
-      const unique = new Set<number>();
-      priority.forEach((index, priorityIndex) => {
-        const bounded = Math.round(
-          clamp(index, 0, Math.max(0, selected.sources.length - 1)),
-        );
-        if (!unique.has(bounded)) {
-          unique.add(bounded);
-          void requestFrame(chapter, selected, bounded, priorityIndex === 0);
-        }
-      });
-    };
-
-    const resolveChapter = (progress: number) => {
-      const exact = sequences.find(
-        (chapter) => progress >= chapter.start && progress <= chapter.end,
-      );
-      if (exact) return exact;
-      if (progress < sequences[0].start) return sequences[0];
-
-      for (let i = 0; i < sequences.length - 1; i++) {
-        if (progress > sequences[i].end && progress < sequences[i + 1].start) {
-          if (sequences[i].id === "chapter1Forth") {
-            return sequences[i];
-          }
-          const gapMidpoint = (sequences[i].end + sequences[i + 1].start) / 2;
-          return progress < gapMidpoint ? sequences[i] : sequences[i + 1];
-        }
-      }
-
-      if (progress > sequences[sequences.length - 1].end) return sequences[sequences.length - 1];
-      return null;
-    };
-
-    const frameAtProgress = (
-      chapter: SequenceChapter,
-      selected: SelectedFrames,
-      progress: number,
-    ) => {
-      const localProgress = clamp(
-        (progress - chapter.start) / (chapter.end - chapter.start),
-      );
-      return Math.round(localProgress * Math.max(0, selected.sources.length - 1));
-    };
-
-    const primeProgressFrame = (progress: number) => {
-      if (!pageVisible || width === 0) return;
-      const chapter = resolveChapter(progress);
-      if (!chapter) return;
-      const selected = getSelection(chapter);
-      if (!selected.sources.length) return;
-      const frameIndex = frameAtProgress(chapter, selected, progress);
-      // The exact target is requested first, so a scrollbar jump does not wait
-      // for the smoothed visual progress to catch up.
-      void requestFrame(chapter, selected, frameIndex, true);
-    };
-
     const resize = () => {
       const viewport = window.visualViewport;
       width = Math.round(viewport?.width ?? window.innerWidth);
@@ -597,15 +304,12 @@ export default function OceanJourneyCanvas({
         pointerX = targetPointerX;
         pointerY = targetPointerY;
       }
-      selectionCache.clear();
-
       scrollableCached = Math.max(
         1,
         document.documentElement.scrollHeight - window.innerHeight,
       );
 
-      primeProgressFrame(targetProgress);
-    };
+      };
 
     const scheduleResize = () => {
       if (resizeFrame) return;
@@ -627,8 +331,7 @@ export default function OceanJourneyCanvas({
         scrollDirection = nextProgress >= targetProgress ? 1 : -1;
       }
       targetProgress = nextProgress;
-      primeProgressFrame(targetProgress);
-    };
+      };
 
     const updateInterface = (
       progress: number,
@@ -1164,10 +867,15 @@ export default function OceanJourneyCanvas({
         if (slowFrameCount > 110) lowerPerformanceBudget();
       }
 
-      smoothProgress +=
-        (targetProgress - smoothProgress) *
-        (profile.reducedMotion ? 1 : profile.quality === "low" ? 0.11 : 0.08);
+      if (Math.abs(targetProgress - smoothProgress) > 0.15) {
+        smoothProgress = targetProgress;
+      } else {
+        smoothProgress +=
+          (targetProgress - smoothProgress) *
+          (profile.reducedMotion ? 1 : profile.quality === "low" ? 0.11 : 0.08);
+      }
       const progress = clamp(smoothProgress);
+      window.dispatchEvent(new CustomEvent("ocean-progress", { detail: progress }));
       const descendingSubmersion = smoothstep(
         (progress - waterTouchProgress) /
         Math.max(0.001, fullySubmergedProgress - waterTouchProgress),
@@ -1248,91 +956,14 @@ export default function OceanJourneyCanvas({
       updateWaterPhysics(time, progress, depth, submersion);
       context.clearRect(0, 0, width, height);
 
-      const chapter = resolveChapter(progress);
-      let currentFrame = 0;
-      let targetFrame = 0;
-      let activeImage: HTMLImageElement | null = null;
-      if (chapter) {
-        const selected = getSelection(chapter);
-        if (selected.sources.length > 0) {
-          const localProgress = clamp(
-            (progress - chapter.start) / (chapter.end - chapter.start),
-          );
-          const continuousIndex = localProgress * (selected.sources.length - 1);
-          const reducedStep = Math.max(1, Math.floor(selected.sources.length / 3));
-          currentFrame = profile.reducedMotion
-            ? Math.min(
-              selected.sources.length - 1,
-              Math.round(continuousIndex / reducedStep) * reducedStep,
-            )
-            : Math.round(continuousIndex);
-          targetFrame = frameAtProgress(chapter, selected, targetProgress);
-
-          preloadWindow(chapter, selected, currentFrame, scrollDirection);
-           const currentImage = nearestLoaded(chapter, selected, currentFrame);
-          if (currentImage) retainedFrame = currentImage;
-          const displayImage = currentImage ?? retainedFrame;
-          activeImage = displayImage;
-          // Ultra-smooth equal-power cubic Hermite cross-fade between hero video and canvas image sequence
-          const heroFadeOut = smoothstep((progress - 0.005) / 0.045);
-          const footerFadeIn = smoothstep(
-            (progress - surfaceApproachProgress) /
-            Math.max(0.001, surfaceBreakProgress - surfaceApproachProgress),
-          );
-
-          // Synchronize video element opacity in real time
-          const videoAlpha = clamp(1 - heroFadeOut + footerFadeIn);
-          root.style.setProperty("--hero-video-opacity", videoAlpha.toFixed(4));
-
-          // Calculate canvas sequence alpha as exact mathematical complement
-          let sequenceAlpha = 1;
-          if (progress < 0.05) {
-            sequenceAlpha = heroFadeOut;
-          } else if (progress >= surfaceApproachProgress) {
-            sequenceAlpha = 1 - footerFadeIn;
-          }
-
-          const chapterIndex = sequences.indexOf(chapter);
-          const nextChapter = sequences[chapterIndex + 1];
-
-          if (nextChapter && localProgress > 0.62) {
-            const nextSelected = getSelection(nextChapter);
-            const count = Math.min(
-              profile.nextChapterFrames,
-              nextSelected.sources.length,
-            );
-            for (let index = 0; index < count; index += 1) {
-              void requestFrame(nextChapter, nextSelected, index);
-            }
-          }
-
-          const prevChapter = sequences[chapterIndex - 1];
-          if (prevChapter && localProgress < 0.38) {
-            const prevSelected = getSelection(prevChapter);
-            const totalFrames = prevSelected.sources.length;
-            const count = Math.min(
-              profile.nextChapterFrames,
-              totalFrames,
-            );
-            for (let index = 0; index < count; index += 1) {
-              void requestFrame(prevChapter, prevSelected, totalFrames - 1 - index);
-            }
-          }
-
-          if (displayImage) {
-            cover(
-              context,
-              displayImage,
-              width,
-              height,
-              sequenceAlpha,
-            );
-          }
-
-          renderCount += 1;
-          if (renderCount % 30 === 0) trimCache(chapter, currentFrame);
-        }
-      }
+      // Calculate cross-fade to synchronize with hero video
+      const heroFadeOut = smoothstep((progress - 0.005) / 0.045);
+      const footerFadeIn = smoothstep(
+        (progress - surfaceApproachProgress) /
+        Math.max(0.001, surfaceBreakProgress - surfaceApproachProgress),
+      );
+      const videoAlpha = clamp(1 - heroFadeOut + footerFadeIn);
+      root.style.setProperty("--hero-video-opacity", videoAlpha.toFixed(4));
 
       // Only draw environmental overlays (depth grade, caustics, particles, bubbles)
       // once we are past the hero image-sequence phase. During the early scroll
@@ -1342,17 +973,16 @@ export default function OceanJourneyCanvas({
         drawEnvironment(depth, time, networkGrowth, visionEvent);
       }
 
-      // Smooth, gradual dissolve into pitch-black abyss overlay.
-      // Dark experience covers Projects (04) through Partners (08).
-      // Holds solid black (1.0) through Section 08 Partners (up to 0.94).
-      // Fades out smoothly from 0.94 to 0.96 right as Partners ends,
-      // launching Chapter 2 ocean image sequence under Section 09 Future & Footer.
+      // Use raw instant scroll position for the darkness overlay so that if a user 
+      // furiously scrubs in reverse, the screen instantly snaps to black, seamlessly masking 
+      // the background canvas while it awaits network fetching for the new chapter sequences.
+      const instantProgress = targetProgress;
       let abyssDarkness = 0;
-      if (progress >= 0.44 && progress <= 0.96) {
-        if (progress < 0.52) {
-          abyssDarkness = smoothstep((progress - 0.44) / 0.08);
-        } else if (progress > 0.94) {
-          abyssDarkness = 1 - smoothstep((progress - 0.94) / 0.02);
+      if (instantProgress >= 0.44 && instantProgress <= 0.89) {
+        if (instantProgress < 0.52) {
+          abyssDarkness = smoothstep((instantProgress - 0.44) / 0.08);
+        } else if (instantProgress > 0.87) {
+          abyssDarkness = 1 - smoothstep((instantProgress - 0.87) / 0.02);
         } else {
           abyssDarkness = 1;
         }
@@ -1366,30 +996,17 @@ export default function OceanJourneyCanvas({
 
       if (isDevelopment) {
         const elProgress = document.getElementById("dbg-progress");
-        const elChapter = document.getElementById("dbg-chapter");
-        const elFrame = document.getElementById("dbg-frame");
-        const elTargetFrame = document.getElementById("dbg-target-frame");
-        const elCache = document.getElementById("dbg-cache");
-        const elSrc = document.getElementById("dbg-src");
 
         if (elProgress) elProgress.textContent = progress.toFixed(4);
-        if (elChapter) elChapter.textContent = chapter?.id ?? "None";
-        if (elFrame) elFrame.textContent = String(currentFrame);
-        if (elTargetFrame) elTargetFrame.textContent = String(targetFrame);
-        if (elCache) elCache.textContent = `${loaded.size} / ${profile.maxCachedFrames}`;
-        if (elSrc) {
-          const name = activeImage ? (activeImage.src.split("/").pop() ?? "-") : "-";
-          elSrc.textContent = name;
-        }
 
         if (time - diagnosticTime > 500) {
           diagnosticTime = time;
           window.__OCEAN_DEBUG__ = {
-            currentChapter: chapter?.id ?? null,
-            currentFrame,
-            targetFrame,
-            decodedFrameCount: loaded.size,
-            cacheSize: loaded.size,
+            currentChapter: null,
+            currentFrame: 0,
+            targetFrame: 0,
+            decodedFrameCount: 0,
+            cacheSize: 0,
             qualityMode: profile.quality,
             averageFrameTime: Number(averageFrameTime.toFixed(2)),
             depth: Number(depth.toFixed(4)),
@@ -1493,30 +1110,7 @@ export default function OceanJourneyCanvas({
     smoothProgress = targetProgress;
     previousProgress = targetProgress;
 
-    const firstChapter = sequences[0];
-    if (firstChapter) {
-      const firstSelection = getSelection(firstChapter);
-      const initialFrameCount = Math.min(7, firstSelection.sources.length);
-      if (initialFrameCount === 0) {
-        onInitialBufferProgress?.(1);
-        if (isDevelopment) {
-          console.warn(
-            `[ocean] No frames found in ${firstChapter.id}; the hero remains visible.`,
-          );
-        }
-      } else {
-        let settledFrames = 0;
-        for (let index = 0; index < initialFrameCount; index += 1) {
-          void requestFrame(firstChapter, firstSelection, index, true).finally(() => {
-            if (disposed) return;
-            settledFrames += 1;
-            onInitialBufferProgress?.(settledFrames / initialFrameCount);
-          });
-        }
-      }
-    } else {
-      onInitialBufferProgress?.(1);
-    }
+    onInitialBufferProgress?.(1);
 
     window.addEventListener("resize", scheduleResize, { passive: true });
     window.addEventListener("orientationchange", scheduleResize, {
@@ -1559,15 +1153,6 @@ export default function OceanJourneyCanvas({
       document.removeEventListener("pointerout", handleNetworkPointerOut);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       waterBodies.forEach((body) => body.style.removeProperty("transform"));
-      loaded.clear();
-      pending.clear();
-      activeImages.forEach((image) => {
-        image.src = "";
-      });
-      activeImages.clear();
-      cancelled.clear();
-      failed.clear();
-      selectionCache.clear();
       delete root.dataset.animationQuality;
       delete root.dataset.reducedMotion;
       delete root.dataset.performanceLevel;

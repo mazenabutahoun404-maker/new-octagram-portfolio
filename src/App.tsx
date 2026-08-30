@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import RefImageNavBar from "./components/chrome/RefImageNavBar";
 import DiveLoader from "./components/ocean/DiveLoader";
 import OceanJourneyCanvas from "./components/ocean/OceanJourneyCanvas";
+import SmoothImageSequence from "./components/ocean/SmoothImageSequence";
 import DarkExperienceCanvas from "./components/ocean/DarkExperienceCanvas";
 import HeroSection from "./components/sections/HeroSection";
 import AboutSection from "./components/sections/AboutSection";
@@ -30,8 +31,9 @@ export default function App() {
   const [videoReady, setVideoReady] = useState(!hasHeroVideo);
   const [posterReady, setPosterReady] = useState(!heroPosterUrl);
   const [sequenceProgress, setSequenceProgress] = useState(0);
-  const [loaderVisible, setLoaderVisible] = useState(false);
+  const [loaderVisible, setLoaderVisible] = useState(true);
   const [loaderMounted, setLoaderMounted] = useState(true);
+  const [minTimeElapsed, setMinTimeElapsed] = useState(false);
   const { enabled: soundEnabled, toggle: toggleSound, graphRef } =
     useAmbientSound();
 
@@ -55,15 +57,22 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (loadingProgress < 1) {
-      const showTimer = window.setTimeout(() => setLoaderVisible(true), 180);
-      return () => window.clearTimeout(showTimer);
+    const minTimer = window.setTimeout(() => setMinTimeElapsed(true), 1500);
+    return () => window.clearTimeout(minTimer);
+  }, []);
+
+  useEffect(() => {
+    if (loadingProgress < 1 || !minTimeElapsed) {
+      // Keep it visible until loaded AND the minimum duration has elapsed
+      if (!loaderVisible) setLoaderVisible(true);
+      return;
     }
 
     setLoaderVisible(false);
-    const unmountTimer = window.setTimeout(() => setLoaderMounted(false), 520);
+    // Unmount after the premium 1.4s opening gate zoom transition
+    const unmountTimer = window.setTimeout(() => setLoaderMounted(false), 1400);
     return () => window.clearTimeout(unmountTimer);
-  }, [loadingProgress]);
+  }, [loadingProgress, minTimeElapsed]);
 
   // Massively optimize CPU/GPU rendering resources by explicitly pausing the Hero video 
   // when it securely scrolls off-screen.
@@ -85,6 +94,15 @@ export default function App() {
     const reducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
+    
+    if (target === "hero") {
+      window.scrollTo({
+        top: 0,
+        behavior: reducedMotion ? "auto" : "smooth",
+      });
+      return;
+    }
+
     const el = document.getElementById(target);
     if (el) {
       const targetY = window.scrollY + el.getBoundingClientRect().top;
@@ -131,7 +149,7 @@ export default function App() {
             poster={heroPosterUrl || undefined}
             aria-hidden="true"
             data-hero-video
-            onLoadedMetadata={() => setVideoReady(true)}
+            onCanPlay={() => setVideoReady(true)}
             onError={() => setVideoReady(true)}
           >
             {heroMobileVideoUrl && heroVideoUrl ? (
@@ -140,6 +158,8 @@ export default function App() {
             <source src={heroVideoUrl || heroMobileVideoUrl} />
           </video>
         ) : null}
+
+        <SmoothImageSequence />
 
         <OceanJourneyCanvas
           depthOutputRef={depthOutputRef}

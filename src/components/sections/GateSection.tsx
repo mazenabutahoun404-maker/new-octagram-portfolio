@@ -24,16 +24,8 @@ export default function GateSection() {
     let isRunning = false;
 
     const lerp = () => {
-      const diff = targetProgress.current - currentProgress.current;
-      if (Math.abs(diff) < 0.0005) {
-        currentProgress.current = targetProgress.current;
-        isRunning = false;
-        return;
-      }
-
-      // Buttery smooth damping factor for eye-comfort cinematic scrolling
-      currentProgress.current += diff * 0.06;
-      const progress = currentProgress.current;
+      const progress = targetProgress.current;
+      currentProgress.current = progress;
 
       // Dynamically calculate ideal base scale for responsive phones (700px is the structural width + paddings)
       const gateOptimalWidth = 740;
@@ -70,8 +62,6 @@ export default function GateSection() {
       }
 
       // 4. Vector Mask & WebGL Texture Crash Protection
-      // Safari brutally kills GPU compositor textures if a CSS scale transform pushes a Canvas over ~4096px.
-      // We physically fade the Canvas and Mask to 0 opacity before they reach dangerous scale sizes!
       if (maskRef.current) {
         const safeOpacity = cameraScale > 2.8 ? 0 : 1;
         maskRef.current.style.opacity = safeOpacity.toString();

@@ -1,6 +1,5 @@
 import type { JourneyDestination, SolutionItem } from "../types/journey";
 
-export const OCTAGRAM_EMAIL = "hello@octagram.com";
 export const OCTAGRAM_LOCATION = "Amman, Jordan";
 
 export const journeyNavigation: JourneyDestination[] = [

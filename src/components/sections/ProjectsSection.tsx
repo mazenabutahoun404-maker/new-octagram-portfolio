@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { companyAssets } from "../../lib/companyAssets";
+import { motion, useScroll, useTransform } from "framer-motion";
 // No imports needed from ScrollWaveField
 type Project = {
   id: string;
@@ -11,6 +12,7 @@ type Project = {
   accent: string;
   palette: [string, string, string];
   image?: string;
+  url?: string;
 };
 
 const PROJECTS: Project[] = [
@@ -27,28 +29,30 @@ const PROJECTS: Project[] = [
     image: companyAssets.projects.octaClinic,
   },
   {
-    id: "autonomous-ai",
-    category: "AI & automation",
-    status: "Enterprise AI",
-    title: "Autonomous AI Workflows",
+    id: "thaaer-coaching",
+    category: "Web & Coaching",
+    status: "Active Platform",
+    title: "Thaaer Online Coaching",
     description:
-      "Intelligent multi-agent orchestration, custom LLM fine-tuning, and real-time operational decision pipelines.",
-    meta: "AI engine infrastructure",
+      "A holistic online fitness and wellness coaching platform featuring dynamic user programs, tracking, and seamless guidance.",
+    meta: "Coaching Platform",
     accent: "#00F5D4",
     palette: ["#00F5D4", "#00BBF9", "#D7FFF9"],
     image: companyAssets.projects.onlineCoaching,
+    url: "https://thaaerfit.com/"
   },
   {
-    id: "cloud-ecosystem",
-    category: "Cloud & web platform",
-    status: "High-throughput",
-    title: "Enterprise Cloud Ecosystem",
+    id: "octagram-portfolio",
+    category: "Digital Experience",
+    status: "Web ecosystem",
+    title: "The Octagram Portfolio",
     description:
-      "Scalable microservices, global edge networking, and zero-trust security infrastructure built as one operational ecosystem.",
-    meta: "Cloud infrastructure",
+      "An immersive cinematic diving experience leveraging pure code to build 3D physics, spatial web design, and interactive performance.",
+    meta: "Immersive WebGL",
     accent: "#00BBF9",
     palette: ["#00BBF9", "#5A4AE0", "#B8F2FF"],
-    image: companyAssets.projects.medicalClub,
+    image: companyAssets.projects.portfolio,
+    url: "https://mazenabutahoun404-maker.github.io/mazen-portofolio/"
   },
 ];
 
@@ -112,6 +116,83 @@ function useMediaQuery(query: string) {
 
   return matches;
 }
+
+function ProjectCard({ project }: { project: Project }) {
+  const ref = useRef<HTMLAnchorElement | HTMLElement>(null);
+  
+  // Track this specific card's position relative to the viewport
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ["0 1", "1 0"], // Starts when element enters bottom, ends when leaves top
+  });
+
+  // Calculate 3D wheel transformations
+  const scale = useTransform(scrollYProgress, [0.1, 0.5, 0.9], [0.85, 1, 0.85]);
+  const opacity = useTransform(scrollYProgress, [0.1, 0.45, 0.55, 0.9], [0.3, 1, 1, 0.3]);
+  const rotateX = useTransform(scrollYProgress, [0.1, 0.5, 0.9], [-15, 0, 15]);
+
+  const Tag = project.url ? motion.a : motion.article;
+
+  return (
+    <Tag
+      // @ts-ignore dynamic tag issues with Framer Motion typing
+      ref={ref}
+      href={project.url}
+      target={project.url ? "_blank" : undefined}
+      rel={project.url ? "noopener noreferrer" : undefined}
+      style={{
+        scale,
+        opacity,
+        rotateX,
+        transformPerspective: 1200,
+        transformStyle: "preserve-3d",
+      }}
+      className={`group relative w-full overflow-hidden rounded-md border border-white/10 bg-black p-6 sm:p-8 transition-colors duration-500 hover:border-white/25 block ${project.url ? "cursor-pointer" : ""}`}
+    >
+      {/* Cinematic Background Image Area */}
+      {project.image && (
+        <div className="absolute inset-y-0 right-0 w-full md:w-[85%] group-hover:w-full z-0 overflow-hidden opacity-100 pointer-events-none transition-all duration-700">
+          <img
+            src={project.image}
+            alt={project.title}
+            className="w-full h-full object-cover object-center scale-[1.02] origin-center"
+          />
+          {/* Gradient Mask for seamless blending into left text area */}
+          <div className="absolute inset-0 bg-gradient-to-r from-black via-black/60 to-transparent group-hover:opacity-0 transition-opacity duration-700" />
+          {/* Very subtle bottom vignette */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent group-hover:opacity-0 transition-opacity duration-700" />
+        </div>
+      )}
+
+      {/* Foreground Content */}
+      <div className="relative z-10 w-full pt-48 md:pt-0 md:w-[55%] flex flex-col h-full group-hover:opacity-10 group-hover:blur-sm transition-all duration-700">
+        <div className="flex items-center gap-4 mb-4">
+          <span
+            className="font-sans text-[10px] sm:text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-full border border-current/20 bg-current/10 backdrop-blur-sm"
+            style={{ color: project.accent }}
+          >
+            {project.category}
+          </span>
+        </div>
+
+        <h3 className="font-serif text-[clamp(1.8rem,3vw,2.5rem)] font-bold leading-tight tracking-tight text-white mb-4 drop-shadow-lg">
+          {project.title}
+        </h3>
+        <p className="text-sm sm:text-base leading-relaxed text-gray-300 font-light max-w-lg mb-10 drop-shadow-md">
+          {project.description}
+        </p>
+
+        <div className="flex items-center gap-6 mt-auto">
+          <span className="font-mono text-xs uppercase tracking-widest text-gray-500">{project.meta}</span>
+          <span className="font-mono text-xs uppercase tracking-widest drop-shadow-md" style={{ color: project.accent }}>
+            {project.status}
+          </span>
+        </div>
+      </div>
+    </Tag>
+  );
+}
+
 export default function ProjectsSection() {
   // Removed scroll sync since we are moving away from scroll-jacking
 
@@ -144,56 +225,10 @@ export default function ProjectsSection() {
             </header>
           </div>
 
-          <div className="col-span-1 lg:col-span-7 flex flex-col gap-10 lg:gap-24">
-            {PROJECTS.map((project) => {
-              return (
-                <article
-                  key={project.id}
-                  className="group relative w-full overflow-hidden rounded-3xl border border-white/5 bg-black/40 p-1 shadow-2xl backdrop-blur-md transition-all duration-700 hover:border-white/10 hover:bg-black/60"
-                  style={{
-                    boxShadow: `0 24px 80px rgba(0,0,0,0.5), 0 0 40px ${project.accent}00`,
-                  }}
-                >
-                  <div className="absolute inset-0 z-0 transition-opacity duration-700 opacity-0 group-hover:opacity-100" 
-                    style={{ background: `radial-gradient(120% 120% at 50% 0%, ${project.accent}15 0%, transparent 70%)` }} 
-                  />
-
-                  {project.image && (
-                    <div className="relative h-64 md:h-80 w-full overflow-hidden rounded-2xl z-10 border border-white/5">
-                      <img
-                        src={project.image}
-                        alt=""
-                        className="h-full w-full object-cover origin-center transition-transform duration-1000 group-hover:scale-105 opacity-60 group-hover:opacity-100 mix-blend-lighten"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
-                    </div>
-                  )}
-
-                  <div className="relative z-10 p-6 sm:p-8">
-                    <div className="flex items-center justify-between gap-4 mb-4">
-                      <span
-                        className="font-mono text-xs font-bold uppercase tracking-[0.2em]"
-                        style={{ color: project.accent }}
-                      >
-                        {project.category}
-                      </span>
-                    </div>
-
-                    <h3 className="font-serif text-[clamp(1.7rem,2.8vw,2.6rem)] font-bold leading-[0.98] tracking-tight text-white group-hover:text-[rgba(255,255,255,0.95)] transition-colors">
-                      {project.title}
-                    </h3>
-                    <p className="mt-3 text-sm md:text-base leading-relaxed text-white/50 font-light mix-blend-screen">
-                      {project.description}
-                    </p>
-
-                    <div className="mt-8 flex items-center justify-between border-t border-white/10 pt-5 font-mono text-xs font-bold uppercase tracking-[0.16em]">
-                      <span className="text-white/36">{project.meta}</span>
-                      <span style={{ color: project.accent }}>{project.status}</span>
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
+          <div className="col-span-1 lg:col-span-7 flex flex-col gap-10 lg:gap-24" style={{ perspective: "1500px" }}>
+            {PROJECTS.map((project) => (
+              <ProjectCard key={project.id} project={project} />
+            ))}
           </div>
         </div>
       </div>

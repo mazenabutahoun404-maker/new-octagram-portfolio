@@ -1,5 +1,6 @@
 import { companyAssets } from "../../lib/companyAssets";
 import JourneySection from "../ui/JourneySection";
+import partnersBg from "../../assets/partners-bg.png";
 
 const partners = [
   {
@@ -27,79 +28,81 @@ const partners = [
 export default function PartnersSection() {
   return (
     <JourneySection id="partners" center={0.91} minHeight="min-h-[100vh]">
-      <div className="w-full max-w-[1360px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
-        
-        {/* ── LEFT COLUMN: Organic partner display ── */}
-        <div className="lg:col-span-6 flex flex-col gap-6 max-w-[560px]">
-          <header>
-            <div className="inline-flex items-center gap-3 px-3.5 py-1 rounded-full border border-rose-400/20 bg-rose-400/5 font-mono text-xs font-bold text-[#FF7E5F] uppercase tracking-[0.25em]">
-              <span className="size-1.5 rounded-full bg-[#FF7E5F] shadow-[0_0_8px_#FF7E5F]" />
-              Ecosystem
-            </div>
-            <h2 className="mt-5 font-serif text-[clamp(2.3rem,4.2vw,4.5rem)] font-bold leading-[0.94] tracking-tight bg-gradient-to-r from-white via-rose-100 to-amber-200 bg-clip-text text-transparent">
-              Built alongside visionaries.
-            </h2>
-            <p className="mt-4 text-sm md:text-base text-white/60 leading-relaxed font-light max-w-md">
-              We partner with industry-defining healthcare and enterprise organizations committed to engineering excellence.
-            </p>
-          </header>
+      {/* ── Immersive Image Background Wrapper ── */}
+      <div className="absolute inset-0 z-0 pointer-events-none opacity-50 mix-blend-screen overflow-hidden">
+        <img
+          src={partnersBg}
+          alt="Partners background aesthetic"
+          className="w-full h-full object-cover origin-center scale-[1.02] filter blur-[2px]"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black via-transparent to-transparent" />
+      </div>
 
-          {/* ── Partner entries — organic flow with accent left line ── */}
-          <div className="flex flex-col gap-0 pt-2">
-            {partners.map((partner) => (
+      <div className="w-full max-w-7xl mx-auto flex flex-col items-center relative z-10 px-4 md:px-8">
+        <header className="text-center mb-16 flex flex-col items-center">
+          <div className="inline-flex items-center gap-3 px-3.5 py-1 rounded-full border border-sky-400/20 bg-sky-400/5 font-sans text-xs font-bold text-sky-300 uppercase tracking-widest mb-6 backdrop-blur-md">
+            <span className="size-1.5 rounded-full bg-sky-300 shadow-[0_0_8px_#38bdf8]" />
+            Ecosystem
+          </div>
+          <h2 className="font-serif text-[clamp(2.5rem,5vw,4.5rem)] font-bold leading-[1.1] tracking-tight text-white max-w-3xl drop-shadow-2xl">
+            Built alongside visionaries.
+          </h2>
+          <p className="mt-6 text-sm md:text-base text-sky-100/80 leading-relaxed font-light max-w-xl text-center drop-shadow-lg">
+            We partner with industry-defining healthcare and enterprise organizations committed to engineering excellence.
+          </p>
+        </header>
+
+        {/* ── Wall of Honor Grid ── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-5xl">
+          {partners.map((partner) => (
+            <div
+              key={partner.id}
+              className="group relative flex flex-col p-8 rounded-xl border border-sky-200/10 bg-[#0B1525]/80 backdrop-blur-md overflow-hidden transition-all duration-500 hover:bg-[#0f1f38]/90 hover:border-sky-300/30 hover:shadow-[0_0_40px_rgba(14,165,233,0.15)]"
+            >
+              {/* Aquatic ambient glow */}
               <div
-                key={partner.id}
-                className="group relative flex items-start gap-5 py-7 transition-all duration-500"
+                className="absolute -inset-24 opacity-0 group-hover:opacity-10 transition-opacity duration-700 pointer-events-none"
                 style={{
-                  borderBottom: "1px solid rgba(255,255,255,0.06)",
+                  background: `radial-gradient(circle at 50% 0%, ${partner.accent}, transparent 60%)`,
                 }}
-              >
-                {/* Accent left line */}
-                <div
-                  className="absolute left-0 top-7 bottom-7 w-px opacity-30 group-hover:opacity-80 transition-opacity duration-500"
-                  style={{ backgroundColor: partner.accent, boxShadow: `0 0 6px ${partner.accent}` }}
-                />
+              />
 
-                {/* Logo */}
-                <div
-                  className="flex size-12 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] ml-4 group-hover:border-white/20 transition-all duration-300"
-                >
+              <div className="flex items-start justify-between gap-4 mb-10 relative z-10">
+                <div className="size-14 rounded-[10px] bg-black/40 border border-sky-100/5 flex items-center justify-center p-2 shadow-inner group-hover:bg-black/60 transition-colors">
                   {partner.logo ? (
                     <img
                       src={partner.logo}
                       alt={partner.name}
-                      className="size-8 object-contain opacity-70 group-hover:opacity-100 transition-opacity duration-300"
+                      className="w-full h-full object-contain opacity-80 group-hover:opacity-100 transition-opacity duration-300"
                     />
                   ) : (
-                    <span className="font-mono text-sm font-bold text-white/60">
+                    <span className="font-sans py-2 text-sm font-bold text-sky-100/70">
                       {partner.fallback}
                     </span>
                   )}
                 </div>
-
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-3">
-                    <h3 className="font-serif text-lg font-bold text-white/90 group-hover:text-white transition-colors">
-                      {partner.name}
-                    </h3>
-                    <span
-                      className="font-mono text-xs font-bold uppercase tracking-widest opacity-60"
-                      style={{ color: partner.accent }}
-                    >
-                      {partner.category}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-sm text-white/45 font-light leading-relaxed group-hover:text-white/65 transition-colors">
-                    {partner.description}
-                  </p>
+                <div className="flex-1 min-w-0 flex justify-end">
+                  <span
+                    className="font-sans text-[10px] sm:text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full border border-current/20 bg-current/5"
+                    style={{ color: partner.accent }}
+                  >
+                    {partner.category}
+                  </span>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
 
-        <div className="hidden lg:block lg:col-span-6 pointer-events-none" />
+              <div className="flex flex-col flex-1 relative z-10">
+                <h3 className="font-serif text-xl sm:text-2xl font-bold text-white mb-3">
+                  {partner.name}
+                </h3>
+                <p className="text-sm text-sky-100/50 font-light leading-relaxed group-hover:text-sky-50/80 transition-colors">
+                  {partner.description}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </JourneySection>
   );
