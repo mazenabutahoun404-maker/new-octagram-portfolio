@@ -45,27 +45,28 @@ export default function DarkExperienceCanvas({
         return;
       }
       currentProgress += diff * 0.1;
-      
+
       if (containerRef.current) {
         // Headless opacity calculation matching previous smoothstep curves
-        const overallFadeIn = smoothstep(0.52, 0.55, currentProgress);
-        const overallFadeOut = 1 - smoothstep(0.92, 0.94, currentProgress);
+        const overallFadeIn = smoothstep(0.42, 0.45, currentProgress);
+        // Fade out DarkExperienceCanvas just before runway hits top
+        const overallFadeOut = 1 - smoothstep(0.82, 0.86, currentProgress);
         const overallAlpha = overallFadeIn * overallFadeOut;
         containerRef.current.style.opacity = overallAlpha.toString();
       }
-      
+
       animationFrameId = requestAnimationFrame(lerp);
     };
 
     const handleScroll = () => {
       const totalScroll = document.documentElement.scrollHeight - window.innerHeight;
       if (totalScroll <= 0) return;
-      
+
       const newProgress = window.scrollY / totalScroll;
       targetProgress = newProgress;
-      
+
       // Extremely lightweight threshold mounts - only triggers twice structurally
-      const shouldBeMounted = newProgress >= 0.51 && newProgress <= 0.95;
+      const shouldBeMounted = newProgress >= 0.41 && newProgress <= 0.88;
       setIsMounted(prev => {
         if (prev !== shouldBeMounted) return shouldBeMounted;
         return prev;
@@ -79,7 +80,7 @@ export default function DarkExperienceCanvas({
 
     window.addEventListener("scroll", handleScroll, { passive: true });
     handleScroll(); // Init
-    
+
     return () => {
       window.removeEventListener("scroll", handleScroll);
       cancelAnimationFrame(animationFrameId);
@@ -102,8 +103,8 @@ export default function DarkExperienceCanvas({
         className="absolute inset-0 pointer-events-none transition-all duration-700"
         style={{
           background: isMobile
-            ? "radial-gradient(circle at 50% 75%, rgba(0, 245, 212, 0.35) 0%, rgba(123, 44, 191, 0.2) 30%, rgba(255, 126, 95, 0.12) 55%, rgba(1,7,17,0.95) 75%, #010711 100%)"
-            : "radial-gradient(circle at 78% 70%, rgba(0, 245, 212, 0.45) 0%, rgba(123, 44, 191, 0.28) 25%, rgba(255, 126, 95, 0.18) 48%, rgba(1,7,17,0.95) 75%, #010711 100%)",
+            ? "radial-gradient(ellipse at 100% 50%, rgba(0, 245, 212, 0.3) 0%, rgba(123, 44, 191, 0.2) 25%, rgba(255, 126, 95, 0.1) 45%, #000000 75%, #000000 100%)"
+            : "radial-gradient(ellipse at 100% 50%, rgba(0, 245, 212, 0.4) 0%, rgba(123, 44, 191, 0.25) 20%, rgba(255, 126, 95, 0.12) 35%, #000000 50%, #000000 100%)",
         }}
       />
 
@@ -116,8 +117,8 @@ export default function DarkExperienceCanvas({
         className="absolute inset-0 pointer-events-none z-20"
         style={{
           background: isMobile
-            ? "linear-gradient(180deg, #010711 0%, #010711 40%, rgba(1,7,17,0.7) 65%, transparent 95%)"
-            : "linear-gradient(125deg, #010711 0%, #010711 38%, rgba(1,7,17,0.85) 54%, rgba(1,7,17,0.2) 75%, transparent 95%)",
+            ? "linear-gradient(180deg, #000000 0%, #000000 40%, rgba(0,0,0,0.7) 65%, transparent 95%)"
+            : "linear-gradient(125deg, #000000 0%, #000000 38%, rgba(0,0,0,0.85) 54%, rgba(0,0,0,0.2) 75%, transparent 95%)",
         }}
       />
     </div>

@@ -1,17 +1,22 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useScroll, useMotionValueEvent, useReducedMotion } from "framer-motion";
-import { sequences, selectFrames, landmarkProgress, type SequenceChapter, type SelectedFrames } from "../../lib/oceanSequences";
+import { sequences, selectFrames, type SequenceChapter, type SelectedFrames } from "../../lib/oceanSequences";
 
 export default function SmoothImageSequence() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  
+
   // Storage for loaded Image objects
   const cacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
   const pendingRef = useRef<Map<string, Promise<HTMLImageElement>>>(new Map());
-  
+
   const renderRequestedRef = useRef(false);
   const currentDrawKeyRef = useRef<string | null>(null);
-  const rectRef = useRef<{w: number, h: number, iw: number, ih: number, x: number, y: number, dw: number, dh: number} | null>(null);
+  const rectRef = useRef<{ w: number, h: number, iw: number, ih: number, x: number, y: number, dw: number, dh: number } | null>(null);
+
+  // Smooth momentum system: lerp the progress so frames keep sliding after scroll stops
+  const smoothProgressRef = useRef(0);
+  const targetProgressRef = useRef(0);
+  const momentumRafRef = useRef<number | null>(null);
 
   const prefersReducedMotion = useReducedMotion();
   const [viewportWidth, setViewportWidth] = useState(window.innerWidth);
@@ -26,13 +31,13 @@ export default function SmoothImageSequence() {
     const exact = sequences.find((chapter) => progress >= chapter.start && progress <= chapter.end);
     if (exact) return exact;
     if (progress < sequences[0].start) return sequences[0];
-    
+
     for (let i = 0; i < sequences.length - 1; i++) {
-       if (progress > sequences[i].end && progress < sequences[i + 1].start) {
-         if (sequences[i].id === "chapter1Forth") return sequences[i];
-         const midpoint = (sequences[i].end + sequences[i + 1].start) / 2;
-         return progress < midpoint ? sequences[i] : sequences[i + 1];
-       }
+      if (progress > sequences[i].end && progress < sequences[i + 1].start) {
+        if (sequences[i].id === "chapter1Forth") return sequences[i];
+        const midpoint = (sequences[i].end + sequences[i + 1].start) / 2;
+        return progress < midpoint ? sequences[i] : sequences[i + 1];
+      }
     }
     return sequences[sequences.length - 1];
   };
@@ -40,7 +45,7 @@ export default function SmoothImageSequence() {
   const getFrameIndex = (chapter: SequenceChapter, selected: SelectedFrames, progress: number) => {
     const localProgress = Math.min(1, Math.max(0, (progress - chapter.start) / (chapter.end - chapter.start)));
     const totalFrames = Math.max(0, selected.sources.length - 1);
-    
+
     if (prefersReducedMotion) {
       const step = Math.max(1, Math.floor(totalFrames / 3));
       return Math.min(totalFrames, Math.round((localProgress * totalFrames) / step) * step);
@@ -52,7 +57,7 @@ export default function SmoothImageSequence() {
     const key = `${chapter.id}:${selected.variant}:${index}`;
     if (cacheRef.current.has(key)) return cacheRef.current.get(key)!;
     if (pendingRef.current.has(key)) return pendingRef.current.get(key)!;
-    
+
     const promise = new Promise<HTMLImageElement>((resolve) => {
       const img = new Image();
       img.decoding = "async";
@@ -67,7 +72,7 @@ export default function SmoothImageSequence() {
       };
       img.src = selected.sources[index];
     });
-    
+
     pendingRef.current.set(key, promise);
     return promise;
   };
@@ -133,47 +138,85 @@ export default function SmoothImageSequence() {
   useMotionValueEvent(scrollYProgress, "change", async (progress) => {
     const chapter = getChapterAtProgress(progress);
     if (!chapter) return;
-    
+
     const selected = selectFrames(chapter, viewportWidth);
     if (!selected.sources.length) return;
 
     const frameIndex = getFrameIndex(chapter, selected, progress);
     const key = `${chapter.id}:${selected.variant}:${frameIndex}`;
-    
+
     // Crucial fix: track the absolute latest frame intended by user scroll
     // and ignore any async promises that resolve out of order.
     lastRequestedKeyRef.current = key;
 
-    // Calculate canvas sequence alpha dynamically for crossfades
-    const surfaceApproachProgress = landmarkProgress("chapter2SecondHalf");
-    
-    // Smoothstep port
-    const smoothstep = (value: number) => {
-      const x = Math.min(1, Math.max(0, value));
-      return x * x * (3 - 2 * x);
-    };
+    // Store scroll target for momentum loop
+    targetProgressRef.current = progress;
 
-    const heroFadeOut = smoothstep((progress - 0.005) / 0.045);
-    
-    let sequenceAlpha = 1;
-    if (progress < 0.05) {
-      sequenceAlpha = heroFadeOut;
-    } else if (progress >= 0.44 && progress <= 0.89) {
-      // Synchronous DOM-level fade to completely prevent 16ms canvas lag buffering glitches 
-      // when rapidly jumping backwards from Chapter 2 into the abyss section.
-      if (progress < 0.52) {
-        sequenceAlpha = 1 - smoothstep((progress - 0.44) / 0.08); // fade out
-      } else if (progress > 0.87) {
-        sequenceAlpha = smoothstep((progress - 0.87) / 0.02); // fade back in
-      } else {
-        sequenceAlpha = 0;
-      }
+    // Start momentum loop if not already running
+    if (momentumRafRef.current === null) {
+      const momentumLoop = () => {
+        const target = targetProgressRef.current;
+        const current = smoothProgressRef.current;
+        const diff = target - current;
+
+        // Lerp toward target — 0.16 factor creates the "keeps sliding" feel
+        smoothProgressRef.current = current + diff * 0.16;
+
+        const smoothed = smoothProgressRef.current;
+
+        // -- STRICT SYNC: Opacity exactly matches the rendered momentum frame --
+        const smoothstep = (value: number) => {
+          const x = Math.min(1, Math.max(0, value));
+          return x * x * (3 - 2 * x);
+        };
+        const heroFadeOut = smoothstep((smoothed - 0.005) / 0.045);
+
+        let sequenceAlpha = 1;
+        if (smoothed < 0.05) {
+          sequenceAlpha = heroFadeOut;
+        } else if (smoothed >= 0.40) {
+          // Wide, smooth fade zone — completely hidden during dark experience
+          if (smoothed < 0.46) {
+            sequenceAlpha = 1 - smoothstep((smoothed - 0.40) / 0.06); // Fade out during Gate
+          } else if (smoothed > 0.75) {
+            sequenceAlpha = smoothstep((smoothed - 0.75) / 0.05); // Canvas fully visible by 0.80 BEFORE Ch2 begins
+          } else {
+            sequenceAlpha = 0; // Completely hidden during dark experience
+          }
+        }
+
+        if (canvasRef.current) {
+          canvasRef.current.style.opacity = sequenceAlpha.toFixed(4);
+        }
+        const ch = getChapterAtProgress(smoothed);
+        if (!ch) { momentumRafRef.current = null; return; }
+        const sel = selectFrames(ch, viewportWidth);
+        if (!sel.sources.length) { momentumRafRef.current = null; return; }
+
+        const fi = getFrameIndex(ch, sel, smoothed);
+        const k = `${ch.id}:${sel.variant}:${fi}`;
+        lastRequestedKeyRef.current = k;
+
+        if (cacheRef.current.has(k)) {
+          requestDraw(cacheRef.current.get(k)!, k);
+        } else {
+          loadFrame(ch, sel, fi).then((img) => {
+            if (lastRequestedKeyRef.current === k) requestDraw(img, k);
+          });
+        }
+
+        // Keep running until settled
+        if (Math.abs(diff) > 0.00003) {
+          momentumRafRef.current = requestAnimationFrame(momentumLoop);
+        } else {
+          smoothProgressRef.current = target;
+          momentumRafRef.current = null;
+        }
+      };
+      momentumRafRef.current = requestAnimationFrame(momentumLoop);
     }
 
-    if (canvasRef.current) {
-      canvasRef.current.style.opacity = sequenceAlpha.toFixed(4);
-    }
-
+    // Preload surrounding frames based on raw scroll progress
     const schedulePreload = () => {
       if ('requestIdleCallback' in window) {
         window.requestIdleCallback(() => preloadSurrounding(chapter, selected, frameIndex), { timeout: 100 });
@@ -181,24 +224,13 @@ export default function SmoothImageSequence() {
         setTimeout(() => preloadSurrounding(chapter, selected, frameIndex), 50);
       }
     };
-
-    if (cacheRef.current.has(key)) {
-      requestDraw(cacheRef.current.get(key)!, key);
-      schedulePreload();
-    } else {
-      const img = await loadFrame(chapter, selected, frameIndex);
-      // ONLY draw if the user hasn't scrolled past this frame while it was loading!
-      if (lastRequestedKeyRef.current === key) {
-        requestDraw(img, key);
-      }
-      schedulePreload();
-    }
+    schedulePreload();
   });
 
   return (
-    <div className="fixed inset-0 z-0 pointer-events-none">
-      <canvas 
-        ref={canvasRef} 
+    <div className="fixed inset-0 z-[2] pointer-events-none">
+      <canvas
+        ref={canvasRef}
         className="block w-full h-full object-cover transition-opacity duration-75"
         style={{ width: "100%", height: "100%" }}
       />

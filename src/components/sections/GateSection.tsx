@@ -22,17 +22,33 @@ export default function GateSection() {
   useEffect(() => {
     let animationFrameId: number;
     let isRunning = false;
+    let isVisible = false;
 
     const lerp = () => {
       const progress = targetProgress.current;
-      currentProgress.current = progress;
+      const diff = progress - currentProgress.current;
+
+      if (!isVisible && !isRunning) {
+        isRunning = false;
+        return;
+      }
+
+      if (Math.abs(diff) < 0.0005) {
+        currentProgress.current = progress;
+        isRunning = false;
+        // Do one last DOM update to settle perfectly
+      } else {
+        currentProgress.current += diff * 0.15; // actually lerp for smoothness
+      }
+
+      const current = currentProgress.current;
 
       // Dynamically calculate ideal base scale for responsive phones (700px is the structural width + paddings)
       const gateOptimalWidth = 740;
       const baseScale = Math.min(1, window.innerWidth / gateOptimalWidth);
 
       // Enforce a strict delay! Wait for 15% of the scroll before the Gate begins zooming.
-      const zoomRaw = Math.min(1, Math.max(0, (progress - 0.15) / 0.85));
+      const zoomRaw = Math.min(1, Math.max(0, (current - 0.15) / 0.85));
       const zoomEased = zoomRaw * zoomRaw * (3 - 2 * zoomRaw);
       // Mobile zoom travels exactly the same massive cinematic distance relative to its base!
       const cameraScale = baseScale + zoomEased * (35 / baseScale);
@@ -45,34 +61,57 @@ export default function GateSection() {
 
       // 2. Shell Fade Out Transition
       if (shellRef.current) {
-        const exitRaw = Math.min(1, Math.max(0, (progress - 0.82) / 0.18));
+        const exitRaw = Math.min(1, Math.max(0, (current - 0.82) / 0.18));
         shellRef.current.style.opacity = Math.max(0, 1 - exitRaw).toString();
       }
 
       // 3. Glow Intensity Transitions
       if (glowWrapperRef.current) {
-        const glowIntensity = Math.min(1, progress * 4);
-        const outerGlow = glowWrapperRef.current.children[0] as HTMLElement;
-        const gateStruct = glowWrapperRef.current.children[1] as HTMLElement;
-        const floorLight = glowWrapperRef.current.children[2] as HTMLElement;
+        // Prevent drop-blur texture crash securely by hiding it exactly as it clears the screen viewport
+        const scaleFadeTarget = Math.max(0, 1 - Math.max(0, (cameraScale - 4.5) / 1.0));
+        const isOversized = cameraScale > 5.5; 
+        glowWrapperRef.current.style.display = isOversized ? "none" : "flex";
 
-        if (outerGlow) outerGlow.style.opacity = (glowIntensity * 0.6).toString();
-        if (gateStruct) gateStruct.style.boxShadow = `0 0 ${60 + (glowIntensity * 40)}px rgba(14,165,233,${0.2 + (glowIntensity * 0.2)}), inset 0 0 ${40 + (glowIntensity * 40)}px rgba(14,165,233,${0.1 + (glowIntensity * 0.2)})`;
-        if (floorLight) floorLight.style.opacity = (glowIntensity * 0.5).toString();
+        if (!isOversized) {
+          const glowIntensity = Math.min(1, current * 4);
+          const baseOpacity = scaleFadeTarget;
+          
+          const outerGlow = glowWrapperRef.current.children[0] as HTMLElement;
+          const gateStruct = glowWrapperRef.current.children[1] as HTMLElement;
+          const floorLight = glowWrapperRef.current.children[2] as HTMLElement;
+
+          if (outerGlow) outerGlow.style.opacity = (glowIntensity * 0.6 * baseOpacity).toString();
+          if (gateStruct) {
+            gateStruct.style.opacity = baseOpacity.toString();
+            gateStruct.style.boxShadow = `0 0 ${60 + (glowIntensity * 40)}px rgba(14,165,233,${0.2 + (glowIntensity * 0.2)}), inset 0 0 ${40 + (glowIntensity * 40)}px rgba(14,165,233,${0.1 + (glowIntensity * 0.2)})`;
+          }
+          if (floorLight) floorLight.style.opacity = (glowIntensity * 0.5 * baseOpacity).toString();
+        }
       }
 
       // 4. Vector Mask & WebGL Texture Crash Protection
       if (maskRef.current) {
-        const safeOpacity = cameraScale > 2.8 ? 0 : 1;
-        maskRef.current.style.opacity = safeOpacity.toString();
+        maskRef.current.style.opacity = "1";
+        maskRef.current.style.display = cameraScale > 5.5 ? "none" : "flex"; 
       }
+      
       if (gridRiseRef.current) {
-        // Fade out smoothly between scale 2.0 and 2.8
-        const waterOpacity = Math.max(0, 1 - Math.max(0, (cameraScale - 2.0) / 0.8));
-        gridRiseRef.current.style.opacity = waterOpacity.toString();
+        // Cancel out parent 2D zoom perfectly using exact screen center (16.666% of 60vh container)
+        gridRiseRef.current.style.transformOrigin = "50% 16.666%";
+        gridRiseRef.current.style.transform = `scale(${1 / cameraScale})`;
+
+        // Boolean fade detached exclusively from active scroll percentage
+        const shouldShowGrid = current >= 0.05 && current <= 0.25;
+        gridRiseRef.current.style.opacity = shouldShowGrid ? "1" : "0";
       }
 
-      animationFrameId = requestAnimationFrame(lerp);
+      if (isRunning || isVisible) {
+        if (isRunning && Math.abs(diff) < 0.0005) {
+          // let it run once more to finish setting properties
+        } else {
+          animationFrameId = requestAnimationFrame(lerp);
+        }
+      }
     };
 
     let containerTopCache = 0;
@@ -103,14 +142,25 @@ export default function GateSection() {
     updateGeometry();
     onScroll();
 
+    const observer = new IntersectionObserver((entries) => {
+      isVisible = entries[0].isIntersecting;
+      if (isVisible && !isRunning) {
+        isRunning = true;
+        animationFrameId = requestAnimationFrame(lerp);
+      }
+    });
+    if (containerRef.current) observer.observe(containerRef.current);
+
     return () => {
       window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", updateGeometry);
+      observer.disconnect();
       if (animationFrameId) cancelAnimationFrame(animationFrameId);
     };
   }, []);
 
   return (
-    <div ref={containerRef} id="gate" className="relative h-[400vh] w-full z-10">
+    <div ref={containerRef} id="gate" className="relative h-[200vh] w-full z-10">
       <div className="sticky top-0 h-screen w-full overflow-hidden">
 
         {/* MAIN SHELL CONTAINER (FADES TO BLACK AT END) */}
@@ -130,17 +180,17 @@ export default function GateSection() {
                 Using a massive Vector SVG `<rect>` with a `<mask />` is mathematically flawless and uses 0 VRAM! */}
             <div ref={maskRef} className="absolute z-[0] pointer-events-none -mt-[5vh] flex items-center justify-center">
               <svg
-                className="w-[8000px] h-[8000px]"
-                viewBox="0 0 8000 8000"
+                className="w-[2500px] h-[2500px]"
+                viewBox="0 0 2500 2500"
                 preserveAspectRatio="xMidYMid meet"
               >
                 <defs>
                   <mask id="gate-hole-mask">
-                    <rect width="8000" height="8000" fill="white" />
-                    <rect x="3660" y="3810" width="680" height="380" rx="30" fill="black" />
+                    <rect width="2500" height="2500" fill="white" />
+                    <rect x="910" y="1060" width="680" height="380" rx="30" fill="black" />
                   </mask>
                 </defs>
-                <rect width="8000" height="8000" fill="#f0f9ff" mask="url(#gate-hole-mask)" />
+                <rect width="2500" height="2500" fill="#f0f9ff" mask="url(#gate-hole-mask)" />
               </svg>
             </div>
 
@@ -150,8 +200,9 @@ export default function GateSection() {
                 to avoid iOS coordinate masking bugs and save performance. */}
             <div
               ref={gridRiseRef}
-              className="absolute bottom-0 h-[60vh] w-[300%] -left-[100%] z-10 pointer-events-none transition-opacity duration-300"
+              className="absolute bottom-0 h-[60vh] w-[300%] -left-[100%] z-10 pointer-events-none transition-opacity duration-1000 will-change-transform"
               style={{
+                opacity: 0,
                 maskImage: 'radial-gradient(ellipse at bottom center, black 40%, transparent 80%)',
                 WebkitMaskImage: 'radial-gradient(ellipse at bottom center, black 40%, transparent 80%)',
                 clipPath: `polygon(

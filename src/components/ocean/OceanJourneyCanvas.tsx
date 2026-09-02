@@ -468,9 +468,9 @@ export default function OceanJourneyCanvas({
           ? 1
           : 1 + Math.sin(time * 0.00055) * 0.025;
       const gradient = context.createLinearGradient(0, 0, 0, height);
-      gradient.addColorStop(0, `rgba(1, 7, 18, ${deep * 0.4 * breathing})`);
-      gradient.addColorStop(0.52, `rgba(2, 11, 22, ${deep * 0.52 * breathing})`);
-      gradient.addColorStop(1, `rgba(2, 16, 28, ${0.08 + deep * 0.55 * breathing})`);
+      gradient.addColorStop(0, `rgba(0, 0, 0, ${deep * 0.4 * breathing})`);
+      gradient.addColorStop(0.52, `rgba(0, 0, 0, ${deep * 0.52 * breathing})`);
+      gradient.addColorStop(1, `rgba(0, 0, 0, ${0.08 + deep * 0.55 * breathing})`);
       context.fillStyle = gradient;
       context.fillRect(0, 0, width, height);
     };
@@ -487,8 +487,8 @@ export default function OceanJourneyCanvas({
         height * 0.68,
         width * 0.56,
       );
-      fogA.addColorStop(0, `rgba(4, 32, 44, ${strength * 0.065})`);
-      fogA.addColorStop(1, "rgba(1, 7, 18, 0)");
+      fogA.addColorStop(0, `rgba(0, 0, 0, ${strength * 0.065})`);
+      fogA.addColorStop(1, "rgba(0, 0, 0, 0)");
       context.fillStyle = fogA;
       context.fillRect(0, 0, width, height);
 
@@ -500,8 +500,8 @@ export default function OceanJourneyCanvas({
         height * 0.88,
         width * 0.48,
       );
-      fogB.addColorStop(0, `rgba(2, 24, 34, ${strength * 0.075})`);
-      fogB.addColorStop(1, "rgba(1, 7, 18, 0)");
+      fogB.addColorStop(0, `rgba(0, 0, 0, ${strength * 0.075})`);
+      fogB.addColorStop(1, "rgba(0, 0, 0, 0)");
       context.fillStyle = fogB;
       context.fillRect(0, 0, width, height);
     };

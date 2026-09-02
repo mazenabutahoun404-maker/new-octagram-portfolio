@@ -113,8 +113,19 @@ export default function KineticGrid(props: KineticGridProps) {
         : null;
     ro?.observe(host);
 
+    let cachedRect: DOMRect | null = null;
+    let lastRectUpdate = 0;
+    const getCanvasRect = () => {
+      const now = performance.now();
+      if (!cachedRect || now - lastRectUpdate > 1000) {
+        cachedRect = canvas.getBoundingClientRect();
+        lastRectUpdate = now;
+      }
+      return cachedRect;
+    };
+
     const setMouse = (clientX: number, clientY: number) => {
-      const r = canvas.getBoundingClientRect();
+      const r = getCanvasRect();
       const mx = clientX - r.left;
       const my = clientY - r.top;
       mouseRef.current.x = mx;

@@ -31,9 +31,8 @@ export default function ImpactSection() {
   return (
     <JourneySection id="impact" center={0.84} minHeight="min-h-[100vh]">
       <div className="w-full max-w-[1360px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
-        
-        {/* ── LEFT COLUMN: Floating Metrics ── */}
-        <div className="lg:col-span-6 flex flex-col gap-6 max-w-[560px]">
+        {/* ── RIGHT COLUMN: Floating Metrics ── */}
+        <div className="lg:col-span-6 lg:col-start-7 flex flex-col gap-6 max-w-[560px]">
           <header>
             <div className="inline-flex items-center gap-3 px-3.5 py-1 rounded-full border border-blue-400/20 bg-blue-400/5 font-mono text-xs font-bold text-[#00BBF9] uppercase tracking-[0.25em]">
               <span className="size-1.5 rounded-full bg-[#00BBF9] shadow-[0_0_8px_#00BBF9]" />

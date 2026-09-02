@@ -29,8 +29,8 @@ export default function VisionSection() {
     <JourneySection id="vision" center={0.76} minHeight="min-h-[100vh]">
       <div className="w-full max-w-[1360px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
         
-        {/* ── LEFT COLUMN: Editorial Ambient Typography ── */}
-        <div className="lg:col-span-6 flex flex-col gap-8 max-w-[560px]">
+        {/* ── RIGHT COLUMN: Editorial Ambient Typography ── */}
+        <div className="lg:col-span-6 lg:col-start-7 flex flex-col gap-8 max-w-[560px]">
           <header>
             <div className="inline-flex items-center gap-3 px-3.5 py-1 rounded-full border border-cyan-400/20 bg-cyan-400/5 font-mono text-xs font-bold text-[#00F5D4] uppercase tracking-[0.25em]">
               <span className="size-1.5 rounded-full bg-[#00F5D4] shadow-[0_0_8px_#00F5D4]" />
@@ -82,7 +82,8 @@ export default function VisionSection() {
           </div>
         </div>
 
-        <div className="hidden lg:block lg:col-span-6 pointer-events-none" />
+        {/* ── RIGHT COLUMN: Connected Globe Animation (Handled globally in App.tsx) ── */}
+        <div className="hidden lg:flex lg:col-span-6 h-full min-h-[500px] xl:min-h-[700px] w-full items-center justify-center pointer-events-none" />
       </div>
     </JourneySection>
   );

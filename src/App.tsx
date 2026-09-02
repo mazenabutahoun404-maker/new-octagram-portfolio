@@ -11,9 +11,9 @@ import FoundersSection from "./components/sections/FoundersSection";
 import GateSection from "./components/sections/GateSection";
 import ProjectsSection from "./components/sections/ProjectsSection";
 import VisionSection from "./components/sections/VisionSection";
-import PartnersSection from "./components/sections/PartnersSection";
-import FutureSection from "./components/sections/FutureSection";
 import ImpactSection from "./components/sections/ImpactSection";
+import ConnectedGlobe from "./components/ui/ConnectedGlobe";
+import PartnersSection from "./components/sections/PartnersSection";
 import ContactFooter from "./components/sections/ContactFooter";
 import { useAmbientSound } from "./hooks/useAmbientSound";
 import {
@@ -83,7 +83,7 @@ export default function App() {
       if (window.scrollY > window.innerHeight * 1.5) {
         if (!heroVideo.paused) heroVideo.pause();
       } else {
-        if (heroVideo.paused) heroVideo.play().catch(e => {});
+        if (heroVideo.paused) heroVideo.play().catch(e => { });
       }
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -94,7 +94,7 @@ export default function App() {
     const reducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
-    
+
     if (target === "hero") {
       window.scrollTo({
         top: 0,
@@ -191,20 +191,29 @@ export default function App() {
         <FoundersSection />
         <GateSection />
 
-        {/* ═══ GAP 1: Seamless transition into dark experience ═══ */}
-        <div className="h-[20vh] pointer-events-none" aria-hidden="true" />
-
         {/* ═══ GATE 2: UNIFIED DARK EXPERIENCE — Continuous 3D Signature Sphere (Sections 04-07) ═══ */}
         <ProjectsSection />
-        <VisionSection />
-        <ImpactSection />
-        <PartnersSection />
 
-        {/* ═══ GAP 2: Chapter 2 ascent transition ═══ */}
-        <div className="h-[35vh] pointer-events-none" aria-hidden="true" />
+        {/* Persistent Globe spanning across Vision and Impact Sections */}
+        <div className="relative w-full bg-black">
+          <div className="hidden lg:block absolute top-0 bottom-0 left-[2vw] w-[40%] max-w-[520px] z-30 pointer-events-none">
+            <div className="sticky top-[10vh] h-[80vh] w-full flex items-center justify-center pointer-events-auto">
+              <ConnectedGlobe />
+            </div>
+          </div>
+          <VisionSection />
+          <ImpactSection />
+        </div>
 
-        {/* ═══ GATE 3: CHAPTER 2 IMAGE SEQUENCES (SECTION 08 + FOOTER) ═══ */}
-        <FutureSection />
+        <div className="relative w-full bg-black z-10 flex flex-col">
+          <PartnersSection />
+        </div>
+
+        {/* ═══ CHAPTER 2: Full ocean ascent scroll runway ═══ */}
+        <div className="relative z-10 h-[300vh]">
+          {/* Gradient entrance at top: smooth black-to-transparent, scrolls away naturally */}
+          <div className="absolute top-0 left-0 right-0 h-[100vh] pointer-events-none bg-gradient-to-b from-black via-black/50 to-transparent" />
+        </div>
 
         {/* ═══ FOOTER AT END OF CHAPTER 2 IMAGES ═══ */}
         <ContactFooter jumpTo={jumpTo} />

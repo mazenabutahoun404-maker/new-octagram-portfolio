@@ -54,6 +54,28 @@ const PROJECTS: Project[] = [
     image: companyAssets.projects.portfolio,
     url: "https://mazenabutahoun404-maker.github.io/mazen-portofolio/"
   },
+  {
+    id: "octa-care",
+    category: "Connected Care",
+    status: "In Development",
+    title: "Octa Care",
+    description:
+      "Something meaningful is taking shape. Details coming soon.",
+    meta: "Coming Soon",
+    accent: "#FFC857",
+    palette: ["#FFC857", "#FF7E5F", "#FFE8A3"],
+  },
+  {
+    id: "octa-drip",
+    category: "Specialized Wellness",
+    status: "In Development",
+    title: "Octa Drip",
+    description:
+      "A new standard is being engineered. Stay tuned.",
+    meta: "Coming Soon",
+    accent: "#00BBF9",
+    palette: ["#00BBF9", "#5A4AE0", "#B8F2FF"],
+  },
 ];
 
 const clamp = (value: number, min = 0, max = 1) =>
@@ -119,6 +141,7 @@ function useMediaQuery(query: string) {
 
 function ProjectCard({ project }: { project: Project }) {
   const ref = useRef<HTMLAnchorElement | HTMLElement>(null);
+  const isUpcoming = !project.image;
   
   // Track this specific card's position relative to the viewport
   const { scrollYProgress } = useScroll({
@@ -164,8 +187,18 @@ function ProjectCard({ project }: { project: Project }) {
         </div>
       )}
 
+      {/* Subtle animated gradient background for upcoming cards with no image */}
+      {isUpcoming && (
+        <div
+          className="absolute inset-0 z-0 opacity-[0.08] group-hover:opacity-[0.15] transition-opacity duration-700 pointer-events-none"
+          style={{
+            background: `radial-gradient(ellipse at 70% 50%, ${project.accent}40 0%, transparent 60%)`,
+          }}
+        />
+      )}
+
       {/* Foreground Content */}
-      <div className="relative z-10 w-full pt-48 md:pt-0 md:w-[55%] flex flex-col h-full group-hover:opacity-10 group-hover:blur-sm transition-all duration-700">
+      <div className={`relative z-10 w-full flex flex-col h-full ${isUpcoming ? "" : "pt-48 md:pt-0 md:w-[55%] group-hover:opacity-10 group-hover:blur-sm"} transition-all duration-700`}>
         <div className="flex items-center gap-4 mb-4">
           <span
             className="font-sans text-[10px] sm:text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-full border border-current/20 bg-current/10 backdrop-blur-sm"
@@ -173,10 +206,20 @@ function ProjectCard({ project }: { project: Project }) {
           >
             {project.category}
           </span>
+          {isUpcoming && (
+            <span
+              className="font-mono text-[10px] sm:text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full border border-white/15 bg-white/[0.06]"
+              style={{ color: project.accent }}
+            >
+              {project.status}
+            </span>
+          )}
         </div>
 
-        <h3 className="font-serif text-[clamp(1.8rem,3vw,2.5rem)] font-bold leading-tight tracking-tight text-white mb-4 drop-shadow-lg">
-          {project.title}
+        <h3 className={`font-serif text-[clamp(1.8rem,3vw,2.5rem)] font-bold leading-tight tracking-tight text-white mb-4 drop-shadow-lg ${isUpcoming ? "group-hover:text-current transition-colors duration-300" : ""}`} style={isUpcoming ? { "--tw-text-opacity": 1, color: undefined } as any : undefined}>
+          <span className={isUpcoming ? "group-hover:text-[var(--card-accent)]" : ""} style={isUpcoming ? ({ "--card-accent": project.accent } as any) : undefined}>
+            {project.title}
+          </span>
         </h3>
         <p className="text-sm sm:text-base leading-relaxed text-gray-300 font-light max-w-lg mb-10 drop-shadow-md">
           {project.description}
@@ -184,9 +227,11 @@ function ProjectCard({ project }: { project: Project }) {
 
         <div className="flex items-center gap-6 mt-auto">
           <span className="font-mono text-xs uppercase tracking-widest text-gray-500">{project.meta}</span>
-          <span className="font-mono text-xs uppercase tracking-widest drop-shadow-md" style={{ color: project.accent }}>
-            {project.status}
-          </span>
+          {!isUpcoming && (
+            <span className="font-mono text-xs uppercase tracking-widest drop-shadow-md" style={{ color: project.accent }}>
+              {project.status}
+            </span>
+          )}
         </div>
       </div>
     </Tag>
@@ -200,7 +245,7 @@ export default function ProjectsSection() {
     <section
       id="projects"
       aria-labelledby="projects-title"
-      className="relative z-10 w-full min-h-screen py-32 bg-transparent flex items-center"
+      className="relative z-10 w-full min-h-screen pt-16 pb-32 bg-transparent flex items-center"
     >
       <div className="w-full h-full relative flex items-center px-5 sm:px-10 lg:px-[5vw]">
 

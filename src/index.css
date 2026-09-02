@@ -40,7 +40,7 @@
   
   color-scheme: dark;
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-  background: #010711;
+  background: #000000;
   color: #f5fffe;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -52,14 +52,14 @@
 
 html { 
   scroll-behavior: smooth; 
-  background: #010711; 
+  background: #000000; 
 }
 
 body { 
   margin: 0; 
   min-width: 320px; 
   overflow-x: hidden; 
-  background: #010711; 
+  background: #000000; 
   font-family: 'Plus Jakarta Sans', sans-serif;
   color: #F0FAFF;
 }
@@ -109,7 +109,7 @@ button:focus-visible, a:focus-visible, summary:focus-visible {
   place-content: center;
   justify-items: center; 
   gap: 16px;
-  background: radial-gradient(circle at 50% 25%, rgba(0, 187, 249, 0.25), transparent 60%), #010711;
+  background: radial-gradient(circle at 50% 25%, rgba(0, 187, 249, 0.25), transparent 60%), #000000;
   opacity: 0; 
   visibility: hidden; 
   pointer-events: none;
@@ -208,11 +208,11 @@ button:focus-visible, a:focus-visible, summary:focus-visible {
 /* Background Canvas & Atmosphere */
 .ocean-experience { 
   min-height: 1200vh; 
-  background: #010711; 
+  background: #000000; 
 }
 
 .ocean-base { 
-  background: #010711; 
+  background: #000000; 
 }
 
 .surface-video {
@@ -260,16 +260,16 @@ button:focus-visible, a:focus-visible, summary:focus-visible {
 
 .flashlight {
   background: 
-    radial-gradient(circle 120px at var(--pointer-x) var(--pointer-y), rgba(0, 245, 212, 0.18), rgba(0, 187, 249, 0.08) 48%, transparent), 
-    radial-gradient(circle 300px at var(--pointer-x) var(--pointer-y), rgba(0, 187, 249, 0.05), transparent 75%);
+    radial-gradient(circle 10px at var(--pointer-x) var(--pointer-y), rgba(0, 245, 212, 0.12), rgba(0, 187, 249, 0.06) 48%, transparent), 
+    radial-gradient(circle 30px at var(--pointer-x) var(--pointer-y), rgba(0, 187, 249, 0.03), transparent 75%);
   mix-blend-mode: screen; 
-  opacity: calc(var(--flashlight-strength) * 0.8);
+  opacity: calc(var(--flashlight-strength) * 0.5);
 }
 
 .seabed-detail-reveal {
   background: repeating-radial-gradient(circle at 50% 112%, transparent 0 92px, rgba(0, 245, 212, 0.05) 93px 94px, transparent 95px 164px);
-  -webkit-mask-image: radial-gradient(circle 280px at var(--pointer-x) var(--pointer-y), black, transparent 80%);
-  mask-image: radial-gradient(circle 280px at var(--pointer-x) var(--pointer-y), black, transparent 80%);
+  -webkit-mask-image: radial-gradient(circle 60px at var(--pointer-x) var(--pointer-y), black, transparent 80%);
+  mask-image: radial-gradient(circle 60px at var(--pointer-x) var(--pointer-y), black, transparent 80%);
   mix-blend-mode: screen; 
   opacity: calc(var(--flashlight-strength) * var(--seabed-stage) * 0.7);
 }
@@ -514,7 +514,7 @@ button:focus-visible, a:focus-visible, summary:focus-visible {
   inset: 0; 
   z-index: -1; 
   pointer-events: none; 
-  background: linear-gradient(180deg, transparent, rgba(1, 7, 18, calc(var(--depth) * 0.15)), transparent); 
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, calc(var(--depth) * 0.15)), transparent); 
 }
 
 .editorial-section { 

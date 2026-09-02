@@ -289,9 +289,7 @@ export default function OctagramParticleLogo({
 
         // Smooth antialiased arc dot
         ctx.fillStyle = `rgb(${p.color.r}, ${p.color.g}, ${p.color.b})`;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.fillRect(p.x - p.size, p.y - p.size, p.size * 2, p.size * 2);
       }
 
       ctx.restore();
@@ -306,10 +304,18 @@ export default function OctagramParticleLogo({
     };
   }, [width, height, repulsionRadius, repulsionForce]);
 
+  // Cache bounding rect to prevent layout thrashing (150ms+ INP spikes) on pointer events!
+  const canvasRectRef = useRef<DOMRect | null>(null);
+
   const onMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
+    
+    if (!canvasRectRef.current) {
+        canvasRectRef.current = canvas.getBoundingClientRect();
+    }
+    const rect = canvasRectRef.current;
+    
     const mx = (e.clientX - rect.left) * (width / rect.width);
     const my = (e.clientY - rect.top) * (height / rect.height);
     const prev = prevMouseRef.current;
@@ -326,6 +332,7 @@ export default function OctagramParticleLogo({
 
   const onMouseLeave = () => {
     mouseRef.current = { x: -99999, y: -99999, active: false };
+    canvasRectRef.current = null; // Clear cache on leave so it refreshes if scrolled
   };
 
   const onResetParticles = () => {
