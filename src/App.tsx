@@ -143,7 +143,11 @@ export default function App() {
             muted
             loop
             playsInline
-            preload="metadata"
+            webkit-playsinline=""
+            x5-playsinline=""
+            x5-video-player-type="h5"
+            disableRemotePlayback
+            preload="auto"
             poster={heroPosterUrl || undefined}
             aria-hidden="true"
             data-hero-video

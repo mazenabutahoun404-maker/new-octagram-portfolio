@@ -341,7 +341,7 @@ export default function RefImageNavBar({ jumpTo }: RefImageNavBarProps) {
         whileTap={prefersReducedMotion ? undefined : { scale: 0.94 }}
         aria-label="Return to the Octagram homepage"
         aria-current={activeTab === "hero" ? "page" : undefined}
-        className={`group pointer-events-auto absolute top-4 left-3 grid size-[58px] place-items-center rounded-full border backdrop-blur-[28px] shadow-sm sm:left-5 lg:left-8 ${
+        className={`group pointer-events-auto absolute top-4 left-3 z-[71] grid size-[46px] sm:size-[58px] place-items-center rounded-full border backdrop-blur-[28px] shadow-sm sm:left-5 lg:left-8 ${
           isLightSection
             ? activeTab === "hero"
               ? "border-slate-600 bg-slate-800 shadow-md"
@@ -362,31 +362,41 @@ export default function RefImageNavBar({ jumpTo }: RefImageNavBarProps) {
         <img
           src={octagramLogo}
           alt=""
-          className="size-10 object-contain drop-shadow-[0_4px_10px_rgba(0,8,13,.35)] transition-all duration-300"
+          className="size-8 sm:size-10 object-contain drop-shadow-[0_4px_10px_rgba(0,8,13,.35)] transition-all duration-300"
         />
         <span className="pointer-events-none absolute top-[calc(100%+9px)] left-0 hidden whitespace-nowrap rounded-full border border-white/20 bg-[#020b18]/88 px-3 py-1.5 font-mono text-xs font-bold tracking-[.12em] text-white uppercase opacity-0 shadow-xl backdrop-blur-xl transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 md:block">
           Home
         </span>
       </motion.button>
 
-      {/* Section dock */}
+      {/* Section dock — DESKTOP: top centered pill · MOBILE: full-width bottom sheet */}
       {(!isMobile || isMobileExpanded) ? (
         <motion.nav
           initial={{ opacity: 0, y: isMobile ? 20 : -20, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: isMobile ? 20 : -20, scale: 0.95 }}
           aria-label="Primary navigation"
-          className={`pointer-events-auto absolute bottom-6 left-1/2 -translate-x-1/2 flex h-[52px] sm:h-[58px] w-max max-w-[90vw] items-center rounded-full border px-2 backdrop-blur-[28px] sm:top-4 sm:bottom-auto sm:max-w-[calc(100vw-190px)] transition-colors duration-300 ${
-            isLightSection
-              ? "border-slate-700 bg-[rgba(10,13,20,0.85)] shadow-xl"
-              : "border-white/35 bg-[linear-gradient(145deg,rgba(255,255,255,.17),rgba(255,255,255,.085))] backdrop-saturate-[1.55] shadow-[inset_0_1.5px_2px_rgba(255,255,255,.55),inset_0_-1px_2px_rgba(0,0,0,.25),0_16px_40px_rgba(0,8,15,.28)]"
+          className={`pointer-events-auto z-[80] ${
+            isMobile
+              ? `fixed bottom-0 left-0 right-0 flex h-auto items-center justify-center rounded-t-2xl border-t px-2 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 backdrop-blur-[28px] ${
+                  isLightSection
+                    ? "border-slate-700 bg-[rgba(10,13,20,0.95)] shadow-[0_-8px_30px_rgba(0,0,0,0.3)]"
+                    : "border-white/20 bg-[rgba(5,10,20,0.92)] shadow-[0_-8px_30px_rgba(0,0,0,0.4)]"
+                }`
+              : `absolute top-4 left-1/2 -translate-x-1/2 flex h-[58px] w-max max-w-[calc(100vw-190px)] items-center rounded-full border px-2 backdrop-blur-[28px] transition-colors duration-300 ${
+                  isLightSection
+                    ? "border-slate-700 bg-[rgba(10,13,20,0.85)] shadow-xl"
+                    : "border-white/35 bg-[linear-gradient(145deg,rgba(255,255,255,.17),rgba(255,255,255,.085))] backdrop-saturate-[1.55] shadow-[inset_0_1.5px_2px_rgba(255,255,255,.55),inset_0_-1px_2px_rgba(0,0,0,.25),0_16px_40px_rgba(0,8,15,.28)]"
+                }`
           }`}
           onMouseMove={(event: React.MouseEvent<HTMLElement>) =>
             mouseX.set(event.clientX)
           }
           onMouseLeave={() => mouseX.set(Number.POSITIVE_INFINITY)}
         >
-          <div className="flex w-full items-center gap-1.5 overflow-x-auto py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:w-auto sm:overflow-visible">
+          <div className={`flex items-center gap-1 py-1.5 sm:gap-1.5 sm:py-2 ${
+            isMobile ? "w-full justify-around" : "w-auto overflow-visible"
+          } [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}>
             {navItems.map((item) => (
               <DockItem
                 key={item.id}
@@ -407,7 +417,7 @@ export default function RefImageNavBar({ jumpTo }: RefImageNavBarProps) {
               <button
                 type="button"
                 onClick={() => setIsMobileExpanded(false)}
-                className={`ml-1 flex size-[36px] shrink-0 items-center justify-center rounded-full border ${isLightSection ? "border-slate-300 text-slate-700" : "border-white/30 text-white/90"}`}
+                className="flex size-[38px] shrink-0 items-center justify-center rounded-full border border-white/20 text-white/80 active:bg-white/10"
               >
                 <svg className="size-4 stroke-current stroke-2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
               </button>
@@ -419,11 +429,12 @@ export default function RefImageNavBar({ jumpTo }: RefImageNavBarProps) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           onClick={() => setIsMobileExpanded(true)}
-          className={`pointer-events-auto absolute bottom-6 left-1/2 -translate-x-1/2 flex h-[50px] items-center gap-3 rounded-full border px-5 backdrop-blur-[28px] shadow-lg transition-colors duration-300 ${
+          className={`pointer-events-auto fixed bottom-5 left-1/2 z-[80] -translate-x-1/2 flex h-[50px] items-center gap-3 rounded-full border px-5 backdrop-blur-[28px] shadow-lg transition-colors duration-300 ${
             isLightSection
               ? "border-slate-700 bg-slate-900/95 text-white"
               : "border-white/35 bg-white/10 text-white backdrop-saturate-[1.5] shadow-[inset_0_1.5px_2px_rgba(255,255,255,.3),0_8px_20px_rgba(0,10,20,.4)]"
           }`}
+          style={{ paddingBottom: "max(0px, env(safe-area-inset-bottom))" }}
         >
           <svg className="size-4 stroke-current stroke-2" viewBox="0 0 24 24"><path strokeLinecap="round" d="M4 6h16M4 12h16M4 18h16" /></svg>
           <span className="font-mono text-xs font-bold tracking-[.15em] uppercase">Menu</span>
@@ -444,7 +455,7 @@ export default function RefImageNavBar({ jumpTo }: RefImageNavBarProps) {
         onMouseLeave={contactBubble.onMouseLeave}
         whileTap={prefersReducedMotion ? undefined : { scale: 0.94 }}
         aria-label="Get in touch with Octagram"
-        className={`group pointer-events-auto absolute top-4 right-3 grid size-[58px] place-items-center rounded-full border backdrop-blur-[28px] shadow-sm sm:right-5 lg:right-8 transition-colors duration-300 ${
+        className={`group pointer-events-auto absolute top-4 right-3 z-[71] grid size-[46px] sm:size-[58px] place-items-center rounded-full border backdrop-blur-[28px] shadow-sm sm:right-5 lg:right-8 transition-colors duration-300 ${
           isLightSection
             ? "border-slate-800 bg-slate-900/80 hover:border-slate-500 text-white"
             : "border-cyan-400/40 bg-[radial-gradient(circle_at_32%_20%,rgba(0,245,212,.32),rgba(255,255,255,.08))] text-cyan-300 backdrop-saturate-[1.55] shadow-[inset_0_1.5px_2px_rgba(255,255,255,.65),inset_0_-1px_2px_rgba(0,0,0,.35),0_14px_36px_rgba(0,245,212,.2)] hover:border-cyan-300"
