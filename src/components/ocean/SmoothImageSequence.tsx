@@ -178,8 +178,10 @@ export default function SmoothImageSequence() {
           // Wide, smooth fade zone — completely hidden during dark experience
           if (smoothed < 0.46) {
             sequenceAlpha = 1 - smoothstep((smoothed - 0.40) / 0.06); // Fade out during Gate
-          } else if (smoothed > 0.75) {
+          } else if (smoothed > 0.75 && smoothed < 0.94) {
             sequenceAlpha = smoothstep((smoothed - 0.75) / 0.05); // Canvas fully visible by 0.80 BEFORE Ch2 begins
+          } else if (smoothed >= 0.94) {
+            sequenceAlpha = 1 - smoothstep((smoothed - 0.94) / 0.04); // Smoothly fade out when image sequence finishes to reveal looping video
           } else {
             sequenceAlpha = 0; // Completely hidden during dark experience
           }

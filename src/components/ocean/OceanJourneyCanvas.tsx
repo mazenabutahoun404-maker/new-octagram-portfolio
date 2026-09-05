@@ -1,5 +1,4 @@
 import { useEffect, useRef, type RefObject } from "react";
-import type { AmbientGraph } from "../../hooks/useAmbientSound";
 import { detectCapability } from "../../lib/capability";
 import {
   landmarkProgress,
@@ -12,7 +11,6 @@ import {
 
 type OceanJourneyCanvasProps = {
   depthOutputRef: RefObject<HTMLSpanElement | null>;
-  audioGraphRef: RefObject<AmbientGraph | null>;
   onInitialBufferProgress?: (progress: number) => void;
 };
 
@@ -202,7 +200,6 @@ function createLivingNetwork(
 
 export default function OceanJourneyCanvas({
   depthOutputRef,
-  audioGraphRef,
   onInitialBufferProgress,
 }: OceanJourneyCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -406,18 +403,6 @@ export default function OceanJourneyCanvas({
       navButtons.forEach((button, index) => {
         button.dataset.active = String(index === activeStop);
       });
-
-      const graph = audioGraphRef.current;
-      if (graph && graph.context.state === "running") {
-        const now = graph.context.currentTime;
-        graph.filter.frequency.setTargetAtTime(
-          1650 - smoothstep(depth) * 1390,
-          now,
-          0.35,
-        );
-        graph.gain.gain.setTargetAtTime(0.017 + depth * 0.017, now, 0.45);
-        graph.lfoGain.gain.setTargetAtTime(0.008 - depth * 0.004, now, 0.5);
-      }
 
       if (heroVideo) {
         const nearSurface = submersion < 0.08 || smoothProgress > 0.88;
@@ -858,13 +843,13 @@ export default function OceanJourneyCanvas({
       previousFrameTime = time;
 
       // Ignore massive OS/JS thread spikes (GC, React Hydration, Hot Reloads).
-      // Only measure sustained GPU rendering lag (regular frames taking > 22.5ms).
-      // Give initial react components 1500ms to boot before observing.
-      if (time > 1500 && delta > 0 && delta < 100) {
-        averageFrameTime = averageFrameTime * 0.94 + delta * 0.06;
-        if (averageFrameTime > 22.5) slowFrameCount += 1;
+      // Only measure sustained GPU rendering lag (regular frames taking > 25ms).
+      // Give initial react components 3000ms to boot before observing.
+      if (time > 3000 && delta > 0 && delta < 80) {
+        averageFrameTime = averageFrameTime * 0.96 + delta * 0.04;
+        if (averageFrameTime > 25) slowFrameCount += 1;
         else slowFrameCount = Math.max(0, slowFrameCount - 2);
-        if (slowFrameCount > 110) lowerPerformanceBudget();
+        if (slowFrameCount > 180) lowerPerformanceBudget();
       }
 
       if (Math.abs(targetProgress - smoothProgress) > 0.15) {
@@ -1045,7 +1030,6 @@ export default function OceanJourneyCanvas({
 
     const handleVisibilityChange = () => {
       pageVisible = !document.hidden;
-      const graph = audioGraphRef.current;
       if (!pageVisible) {
         cancelAnimationFrame(animationFrame);
         renderIsRunning = false;
@@ -1053,10 +1037,6 @@ export default function OceanJourneyCanvas({
         scrollVelocity = 0;
         hoverTarget = 0;
         heroVideo?.pause();
-        if (graph?.context.state === "running") {
-          resumeAudioAfterVisibility = true;
-          void graph.context.suspend().catch(() => undefined);
-        }
         return;
       }
 
@@ -1064,10 +1044,6 @@ export default function OceanJourneyCanvas({
       smoothProgress = targetProgress;
       previousProgress = targetProgress;
       scheduleResize();
-      if (graph && resumeAudioAfterVisibility) {
-        resumeAudioAfterVisibility = false;
-        void graph.context.resume().catch(() => undefined);
-      }
       startRenderLoop();
     };
 
@@ -1185,7 +1161,7 @@ export default function OceanJourneyCanvas({
       ].forEach((property) => root.style.removeProperty(property));
       if (isDevelopment) delete window.__OCEAN_DEBUG__;
     };
-  }, [audioGraphRef, depthOutputRef, onInitialBufferProgress]);
+  }, [depthOutputRef, onInitialBufferProgress]);
 
   return (
     <>

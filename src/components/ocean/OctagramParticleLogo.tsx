@@ -18,7 +18,7 @@ interface Particle {
   startY: number;
   repX: number;
   repY: number;
-  color: { r: number; g: number; b: number };
+  colorStr: string;
   size: number;
   inZone: boolean;
 }
@@ -45,6 +45,7 @@ export default function OctagramParticleLogo({
   const mouseSpeedRef = useRef(0);
   const smoothMouseRef = useRef({ x: -99999, y: -99999 });
   const particlesRef = useRef<Particle[]>([]);
+  const particleColorGroupsRef = useRef<Map<string, Particle[]>>(new Map());
   const animFrameRef = useRef<number | null>(null);
   const inViewRef = useRef(false);
 
@@ -55,11 +56,10 @@ export default function OctagramParticleLogo({
     let isDisposed = false;
     let draw: () => void;
 
-    // Set up observer to forcefully halt physics when out of view!
+    // Set up observer to halt physics when out of view
     const observer = new IntersectionObserver((entries) => {
       const [entry] = entries;
       inViewRef.current = entry.isIntersecting;
-      // Kickstart the render loop if it just came back into view
       if (entry.isIntersecting && !animFrameRef.current && isDisposed === false && particlesRef.current.length > 0) {
         if (typeof draw === "function") {
           animFrameRef.current = requestAnimationFrame(draw);
@@ -70,16 +70,16 @@ export default function OctagramParticleLogo({
 
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", { alpha: true });
     if (!ctx) return;
 
     const W = width;
     const H = height;
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
     canvas.width = Math.round(W * dpr);
     canvas.height = Math.round(H * dpr);
 
-    // Offscreen canvas for generating precise Octagram geometry
+    // Offscreen canvas for sampling Octagram emblem
     const offCanvas = document.createElement("canvas");
     offCanvas.width = W;
     offCanvas.height = H;
@@ -94,7 +94,6 @@ export default function OctagramParticleLogo({
       offCtx.clearRect(0, 0, W, H);
 
       if (sourceImg && sourceImg.naturalWidth !== 0) {
-        // Sample from high-res image asset if available
         const padding = 20;
         const maxW = W - padding * 2;
         const maxH = H - padding * 2;
@@ -105,7 +104,6 @@ export default function OctagramParticleLogo({
         const drawY = (H - drawH) / 2;
         offCtx.drawImage(sourceImg, drawX, drawY, drawW, drawH);
       } else {
-        // Draw exact 8-blade geometric Octagram emblem
         const outerR = Math.min(W, H) * 0.38;
         const innerR = Math.min(W, H) * 0.12;
 
@@ -118,7 +116,6 @@ export default function OctagramParticleLogo({
           offCtx.rotate(angle);
           offCtx.fillStyle = `rgb(${color.r}, ${color.g}, ${color.b})`;
 
-          // Angled geometric facet blade shape
           const p1x = innerR * 1.1;
           const p1y = -innerR * 0.35;
           const p2x = outerR;
@@ -139,11 +136,12 @@ export default function OctagramParticleLogo({
         }
       }
 
-      // Sample pixels to create fine, smooth circular particles
+      // Sample pixels with optimal density gap (3.4px) for high resolution & fast 60fps performance
       const imgData = offCtx.getImageData(0, 0, W, H);
       const px = imgData.data;
-      const gap = 2.2; // Fine density sampling
+      const gap = 3.4;
       const sampled: Particle[] = [];
+      const groups = new Map<string, Particle[]>();
 
       for (let y = 0; y < H; y += gap) {
         for (let x = 0; x < W; x += gap) {
@@ -156,24 +154,32 @@ export default function OctagramParticleLogo({
           const a = px[idx + 3];
 
           if (a > 30 && (r > 15 || g > 15 || b > 15)) {
-            sampled.push({
-              x: x,
-              y: y,
+            const colorStr = `rgb(${r},${g},${b})`;
+            const p: Particle = {
+              x,
+              y,
               homeX: x,
               homeY: y,
               startX: x,
               startY: y,
               repX: 0,
               repY: 0,
-              color: { r, g, b },
-              size: 1.1 + Math.random() * 0.8,
+              colorStr,
+              size: 1.2 + Math.random() * 0.6,
               inZone: false,
-            });
+            };
+            sampled.push(p);
+
+            if (!groups.has(colorStr)) {
+              groups.set(colorStr, []);
+            }
+            groups.get(colorStr)!.push(p);
           }
         }
       }
 
       particlesRef.current = sampled;
+      particleColorGroupsRef.current = groups;
     };
 
     // Load logo asset
@@ -189,14 +195,14 @@ export default function OctagramParticleLogo({
       generateParticles();
     }
 
-    // ── Smooth antialiased canvas animation loop ──
+    // ── Optimized High-Performance Animation Loop ──
     draw = () => {
       if (isDisposed) return;
       if (!inViewRef.current) {
         animFrameRef.current = null;
-        return; // Brutally slice CPU usage 100% when off screen!
+        return;
       }
-      
+
       animFrameRef.current = requestAnimationFrame(draw);
       const particles = particlesRef.current;
       if (!particles.length) return;
@@ -229,68 +235,77 @@ export default function OctagramParticleLogo({
       const repCutoff = repulsionRadius;
       const repCutoffSq = repCutoff * repCutoff;
 
-      // Draw constellation threads near cursor
+      // ── Constellation Threads: Single Batched Path (Max 35 line pairs) ──
       if (active && mx > -9000) {
         ctx.strokeStyle = "rgba(0, 245, 212, 0.25)";
         ctx.lineWidth = 0.6;
-        for (let i = 0; i < particles.length; i += 6) {
+        ctx.beginPath();
+        let lineCount = 0;
+
+        for (let i = 0; i < particles.length && lineCount < 35; i += 8) {
           const p1 = particles[i];
           const dx = p1.x - mx;
           const dy = p1.y - my;
-          if (dx * dx + dy * dy < repCutoffSq * 1.5) {
-            for (let j = i + 1; j < Math.min(i + 14, particles.length); j += 2) {
+          if (dx * dx + dy * dy < repCutoffSq * 1.4) {
+            for (let j = i + 1; j < Math.min(i + 12, particles.length) && lineCount < 35; j += 3) {
               const p2 = particles[j];
               const pdx = p1.x - p2.x;
               const pdy = p1.y - p2.y;
-              if (pdx * pdx + pdy * pdy < 350) {
-                ctx.beginPath();
+              if (pdx * pdx + pdy * pdy < 320) {
                 ctx.moveTo(p1.x, p1.y);
                 ctx.lineTo(p2.x, p2.y);
-                ctx.stroke();
+                lineCount++;
               }
             }
           }
         }
+        ctx.stroke();
       }
 
-      // Draw smooth antialiased circular particles
-      for (const p of particles) {
-        // Mouse Repulsion Physics
-        if (active) {
-          const dx = p.homeX - mx;
-          const dy = p.homeY - my;
-          const distSq = dx * dx + dy * dy;
-          if (distSq > 0 && distSq < repCutoffSq) {
-            const dist = Math.sqrt(distSq);
-            const nx = dx / dist;
-            const ny = dy / dist;
-            const push = (1 - dist / repCutoff) * (hitSpeed + 4) * repulsionForce * 0.035;
-            p.repX += nx * push;
-            p.repY += ny * push;
-            const targetRepX = nx * (repCutoff - dist) * 0.8;
-            const targetRepY = ny * (repCutoff - dist) * 0.8;
-            p.repX += (targetRepX - p.repX) * 0.12;
-            p.repY += (targetRepY - p.repY) * 0.12;
-            p.inZone = true;
+      // ── Physics Updates & Batch Rendering by Color Group ──
+      particleColorGroupsRef.current.forEach((groupParticles, colorStr) => {
+        ctx.fillStyle = colorStr;
+        ctx.beginPath();
+
+        for (let k = 0; k < groupParticles.length; k++) {
+          const p = groupParticles[k];
+
+          if (active) {
+            const dx = p.homeX - mx;
+            const dy = p.homeY - my;
+            const distSq = dx * dx + dy * dy;
+            if (distSq > 0 && distSq < repCutoffSq) {
+              const dist = Math.sqrt(distSq);
+              const nx = dx / dist;
+              const ny = dy / dist;
+              const push = (1 - dist / repCutoff) * (hitSpeed + 4) * repulsionForce * 0.035;
+              p.repX += nx * push;
+              p.repY += ny * push;
+              const targetRepX = nx * (repCutoff - dist) * 0.8;
+              const targetRepY = ny * (repCutoff - dist) * 0.8;
+              p.repX += (targetRepX - p.repX) * 0.12;
+              p.repY += (targetRepY - p.repY) * 0.12;
+              p.inZone = true;
+            } else {
+              p.inZone = false;
+            }
           } else {
             p.inZone = false;
           }
-        } else {
-          p.inZone = false;
+
+          if (!p.inZone) {
+            p.repX *= 0.88;
+            p.repY *= 0.88;
+          }
+
+          p.x = p.homeX + p.repX;
+          p.y = p.homeY + p.repY;
+
+          ctx.rect(p.x - p.size, p.y - p.size, p.size * 2, p.size * 2);
         }
 
-        if (!p.inZone) {
-          p.repX *= 0.88;
-          p.repY *= 0.88;
-        }
-
-        p.x = p.homeX + p.repX;
-        p.y = p.homeY + p.repY;
-
-        // Smooth antialiased arc dot
-        ctx.fillStyle = `rgb(${p.color.r}, ${p.color.g}, ${p.color.b})`;
-        ctx.fillRect(p.x - p.size, p.y - p.size, p.size * 2, p.size * 2);
-      }
+        ctx.fill();
+      });
 
       ctx.restore();
     };
@@ -304,18 +319,17 @@ export default function OctagramParticleLogo({
     };
   }, [width, height, repulsionRadius, repulsionForce]);
 
-  // Cache bounding rect to prevent layout thrashing (150ms+ INP spikes) on pointer events!
   const canvasRectRef = useRef<DOMRect | null>(null);
 
   const onMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    
+
     if (!canvasRectRef.current) {
-        canvasRectRef.current = canvas.getBoundingClientRect();
+      canvasRectRef.current = canvas.getBoundingClientRect();
     }
     const rect = canvasRectRef.current;
-    
+
     const mx = (e.clientX - rect.left) * (width / rect.width);
     const my = (e.clientY - rect.top) * (height / rect.height);
     const prev = prevMouseRef.current;
@@ -332,7 +346,7 @@ export default function OctagramParticleLogo({
 
   const onMouseLeave = () => {
     mouseRef.current = { x: -99999, y: -99999, active: false };
-    canvasRectRef.current = null; // Clear cache on leave so it refreshes if scrolled
+    canvasRectRef.current = null;
   };
 
   const onResetParticles = () => {
@@ -363,4 +377,3 @@ export default function OctagramParticleLogo({
     </div>
   );
 }
-

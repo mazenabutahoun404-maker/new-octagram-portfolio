@@ -11,11 +11,10 @@ import FoundersSection from "./components/sections/FoundersSection";
 import GateSection from "./components/sections/GateSection";
 import ProjectsSection from "./components/sections/ProjectsSection";
 import VisionSection from "./components/sections/VisionSection";
-import ImpactSection from "./components/sections/ImpactSection";
+import HowItWorksSection from "./components/sections/HowItWorksSection";
 import ConnectedGlobe from "./components/ui/ConnectedGlobe";
 import PartnersSection from "./components/sections/PartnersSection";
 import ContactFooter from "./components/sections/ContactFooter";
-import { useAmbientSound } from "./hooks/useAmbientSound";
 import {
   heroMobileVideoUrl,
   heroPosterUrl,
@@ -34,8 +33,7 @@ export default function App() {
   const [loaderVisible, setLoaderVisible] = useState(true);
   const [loaderMounted, setLoaderMounted] = useState(true);
   const [minTimeElapsed, setMinTimeElapsed] = useState(false);
-  const { enabled: soundEnabled, toggle: toggleSound, graphRef } =
-    useAmbientSound();
+
 
   const loadingProgress =
     ((videoReady ? 1 : 0) + (posterReady ? 1 : 0) + sequenceProgress) / 3;
@@ -163,7 +161,6 @@ export default function App() {
 
         <OceanJourneyCanvas
           depthOutputRef={depthOutputRef}
-          audioGraphRef={graphRef}
           onInitialBufferProgress={handleSequenceBuffer}
         />
 
@@ -173,11 +170,7 @@ export default function App() {
         <div className="noise fixed inset-0 z-40 pointer-events-none" />
 
         {/* Exact Glass Pill Navigation */}
-        <RefImageNavBar
-          jumpTo={jumpTo}
-          soundEnabled={soundEnabled}
-          toggleSound={toggleSound}
-        />
+        <RefImageNavBar jumpTo={jumpTo} />
 
         {/* ═══ GATE 1: HERO SCROLL PIN WITH IMAGE SEQUENCES ═══ */}
         <div className="relative h-[420vh] z-10">
@@ -194,15 +187,15 @@ export default function App() {
         {/* ═══ GATE 2: UNIFIED DARK EXPERIENCE — Continuous 3D Signature Sphere (Sections 04-07) ═══ */}
         <ProjectsSection />
 
-        {/* Persistent Globe spanning across Vision and Impact Sections */}
+        {/* Persistent Globe spanning across Vision and HowItWorks Sections (Right Aligned) */}
         <div className="relative w-full bg-black">
-          <div className="hidden lg:block absolute top-0 bottom-0 left-[2vw] w-[40%] max-w-[520px] z-30 pointer-events-none">
+          <div className="hidden lg:block absolute top-0 bottom-0 right-[2vw] w-[40%] max-w-[520px] z-30 pointer-events-none">
             <div className="sticky top-[10vh] h-[80vh] w-full flex items-center justify-center pointer-events-auto">
               <ConnectedGlobe />
             </div>
           </div>
           <VisionSection />
-          <ImpactSection />
+          <HowItWorksSection />
         </div>
 
         <div className="relative w-full bg-black z-10 flex flex-col">

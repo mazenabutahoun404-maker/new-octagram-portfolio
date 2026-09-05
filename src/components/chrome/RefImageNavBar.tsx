@@ -20,8 +20,6 @@ import type { JumpToSection } from "../../types/journey";
 
 type RefImageNavBarProps = {
   jumpTo: JumpToSection;
-  soundEnabled: boolean;
-  toggleSound: () => void;
 };
 
 type DockItemData = {
@@ -163,7 +161,7 @@ function DockItem({
         onBlur={() => setTooltipVisible(false)}
         onClick={onClick}
         className={`relative inline-flex shrink-0 cursor-pointer items-center justify-center rounded-full border backdrop-blur-2xl transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${
-          isLightSection 
+          isLightSection
             ? "focus-visible:outline-white text-white " + (isActive
               ? "border-slate-600 bg-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
               : "border-slate-800 bg-slate-900/70 hover:border-slate-500 hover:bg-slate-700")
@@ -174,7 +172,6 @@ function DockItem({
         aria-label={label}
         aria-current={isActive ? "page" : undefined}
       >
-        {/* Liquid Glass Highlight (Only on Dark mode) */}
         {!isLightSection && (
           <span
             aria-hidden="true"
@@ -187,11 +184,7 @@ function DockItem({
   );
 }
 
-export default function RefImageNavBar({
-  jumpTo,
-  soundEnabled,
-  toggleSound,
-}: RefImageNavBarProps) {
+export default function RefImageNavBar({ jumpTo }: RefImageNavBarProps) {
   const [activeTab, setActiveTab] = useState("hero");
   const [isMobileExpanded, setIsMobileExpanded] = useState(false);
   const [isGateZooming, setIsGateZooming] = useState(false);
@@ -205,7 +198,7 @@ export default function RefImageNavBar({
   }, []);
 
   const logoBubble = useBubbleStretch();
-  const soundBubble = useBubbleStretch();
+  const contactBubble = useBubbleStretch();
 
   const spring: SpringOptions = useMemo(
     () => ({ mass: 0.12, stiffness: 190, damping: 15 }),
@@ -272,13 +265,12 @@ export default function RefImageNavBar({
         ),
       },
       {
-        id: "vision",
-        label: "Vision",
-        onClick: () => handleNavClick("vision"),
+        id: "impact",
+        label: "How It Works",
+        onClick: () => handleNavClick("impact"),
         icon: (
           <svg className="size-4 fill-none stroke-current stroke-[1.8]" viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="12" cy="12" r="9" />
-            <path strokeLinejoin="round" d="m16 8-2.2 5.8L8 16l2.2-5.8L16 8Z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 18H7.5m6-6h6.75m-6.75 0a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 12h6.75" />
           </svg>
         ),
       },
@@ -293,34 +285,13 @@ export default function RefImageNavBar({
           </svg>
         ),
       },
-      {
-        id: "future",
-        label: "Future",
-        onClick: () => handleNavClick("future"),
-        icon: (
-          <svg className="size-4 fill-none stroke-current stroke-[1.8]" viewBox="0 0 24 24" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 3h6m-5 0v5l-5 9a2.7 2.7 0 0 0 2.4 4h9.2a2.7 2.7 0 0 0 2.4-4l-5-9V3M7.3 16h9.4" />
-          </svg>
-        ),
-      },
-      {
-        id: "contact",
-        label: "Contact",
-        onClick: () => handleNavClick("contact"),
-        icon: (
-          <svg className="size-4 fill-none stroke-current stroke-[1.8]" viewBox="0 0 24 24" aria-hidden="true">
-            <rect x="3" y="5" width="18" height="14" rx="2.5" />
-            <path strokeLinecap="round" strokeLinejoin="round" d="m5 7 7 6 7-6" />
-          </svg>
-        ),
-      },
     ],
     [handleNavClick]
   );
 
   useEffect(() => {
     const handleScroll = () => {
-      const navTriggerY = 140; // viewport Y coordinate where navbar sits
+      const navTriggerY = 140;
       const allIds = [
         "hero",
         "about",
@@ -331,7 +302,6 @@ export default function RefImageNavBar({
         "vision",
         "impact",
         "partners",
-        "future",
         "contact",
       ];
 
@@ -356,7 +326,7 @@ export default function RefImageNavBar({
 
   return (
     <header className="pointer-events-none fixed inset-x-0 top-0 z-[70] h-[92px]">
-      {/* Home / Octagram logo — hard left liquid glass circle bubble. */}
+      {/* Home / Octagram logo */}
       <motion.button
         type="button"
         onClick={() => handleNavClick("hero")}
@@ -372,7 +342,7 @@ export default function RefImageNavBar({
         aria-label="Return to the Octagram homepage"
         aria-current={activeTab === "hero" ? "page" : undefined}
         className={`group pointer-events-auto absolute top-4 left-3 grid size-[58px] place-items-center rounded-full border backdrop-blur-[28px] shadow-sm sm:left-5 lg:left-8 ${
-          isLightSection 
+          isLightSection
             ? activeTab === "hero"
               ? "border-slate-600 bg-slate-800 shadow-md"
               : "border-slate-800 bg-slate-900/80 hover:border-slate-500"
@@ -383,7 +353,6 @@ export default function RefImageNavBar({
               }`
         }`}
       >
-        {/* Specular Highlight Sheen (Dark Only) */}
         {!isLightSection && (
           <span
             aria-hidden="true"
@@ -400,7 +369,7 @@ export default function RefImageNavBar({
         </span>
       </motion.button>
 
-      {/* Section dock — bottom centered on mobile, top centered on desktop. */}
+      {/* Section dock */}
       {(!isMobile || isMobileExpanded) ? (
         <motion.nav
           initial={{ opacity: 0, y: isMobile ? 20 : -20, scale: 0.95 }}
@@ -408,7 +377,7 @@ export default function RefImageNavBar({
           exit={{ opacity: 0, y: isMobile ? 20 : -20, scale: 0.95 }}
           aria-label="Primary navigation"
           className={`pointer-events-auto absolute bottom-6 left-1/2 -translate-x-1/2 flex h-[52px] sm:h-[58px] w-max max-w-[90vw] items-center rounded-full border px-2 backdrop-blur-[28px] sm:top-4 sm:bottom-auto sm:max-w-[calc(100vw-190px)] transition-colors duration-300 ${
-            isLightSection 
+            isLightSection
               ? "border-slate-700 bg-[rgba(10,13,20,0.85)] shadow-xl"
               : "border-white/35 bg-[linear-gradient(145deg,rgba(255,255,255,.17),rgba(255,255,255,.085))] backdrop-saturate-[1.55] shadow-[inset_0_1.5px_2px_rgba(255,255,255,.55),inset_0_-1px_2px_rgba(0,0,0,.25),0_16px_40px_rgba(0,8,15,.28)]"
           }`}
@@ -451,7 +420,7 @@ export default function RefImageNavBar({
           animate={{ opacity: 1, y: 0 }}
           onClick={() => setIsMobileExpanded(true)}
           className={`pointer-events-auto absolute bottom-6 left-1/2 -translate-x-1/2 flex h-[50px] items-center gap-3 rounded-full border px-5 backdrop-blur-[28px] shadow-lg transition-colors duration-300 ${
-            isLightSection 
+            isLightSection
               ? "border-slate-700 bg-slate-900/95 text-white"
               : "border-white/35 bg-white/10 text-white backdrop-saturate-[1.5] shadow-[inset_0_1.5px_2px_rgba(255,255,255,.3),0_8px_20px_rgba(0,10,20,.4)]"
           }`}
@@ -461,54 +430,38 @@ export default function RefImageNavBar({
         </motion.button>
       )}
 
-      {/* Sound — hard right liquid glass circle bubble. */}
+      {/* Top-Right Quick Contact Action Button */}
       <motion.button
         type="button"
-        onClick={toggleSound}
+        onClick={() => handleNavClick("contact")}
         style={{
-          x: soundBubble.style.x,
-          y: soundBubble.style.y,
-          scaleX: soundBubble.style.scaleX,
-          scaleY: soundBubble.style.scaleY,
+          x: contactBubble.style.x,
+          y: contactBubble.style.y,
+          scaleX: contactBubble.style.scaleX,
+          scaleY: contactBubble.style.scaleY,
         }}
-        onMouseMove={soundBubble.onMouseMove}
-        onMouseLeave={soundBubble.onMouseLeave}
+        onMouseMove={contactBubble.onMouseMove}
+        onMouseLeave={contactBubble.onMouseLeave}
         whileTap={prefersReducedMotion ? undefined : { scale: 0.94 }}
-        aria-pressed={soundEnabled}
-        aria-label={`Turn ambient sound ${soundEnabled ? "off" : "on"}`}
-        className={`group pointer-events-auto absolute top-4 right-3 grid size-[58px] place-items-center rounded-full border backdrop-blur-[28px] shadow-sm sm:right-5 lg:right-8 ${
-          isLightSection 
+        aria-label="Get in touch with Octagram"
+        className={`group pointer-events-auto absolute top-4 right-3 grid size-[58px] place-items-center rounded-full border backdrop-blur-[28px] shadow-sm sm:right-5 lg:right-8 transition-colors duration-300 ${
+          isLightSection
             ? "border-slate-800 bg-slate-900/80 hover:border-slate-500 text-white"
-            : "border-white/35 bg-[radial-gradient(circle_at_32%_20%,rgba(255,255,255,.32),rgba(255,255,255,.08))] text-white backdrop-saturate-[1.55] shadow-[inset_0_1.5px_2px_rgba(255,255,255,.65),inset_0_-1px_2px_rgba(0,0,0,.35),0_14px_36px_rgba(0,8,15,.32)] hover:border-white/60"
+            : "border-cyan-400/40 bg-[radial-gradient(circle_at_32%_20%,rgba(0,245,212,.32),rgba(255,255,255,.08))] text-cyan-300 backdrop-saturate-[1.55] shadow-[inset_0_1.5px_2px_rgba(255,255,255,.65),inset_0_-1px_2px_rgba(0,0,0,.35),0_14px_36px_rgba(0,245,212,.2)] hover:border-cyan-300"
         }`}
       >
-        {/* Specular Highlight Sheen (Dark Only) */}
         {!isLightSection && (
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(circle_at_35%_25%,rgba(255,255,255,0.45),transparent_60%)] opacity-80"
+            className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(circle_at_35%_25%,rgba(0,245,212,0.35),transparent_60%)] opacity-80"
           />
         )}
-        <span className="flex items-center gap-[3px]" aria-hidden="true">
-          <i
-            className={`w-[2px] rounded-full bg-current transition-all ${soundEnabled ? "h-2.5 animate-pulse" : "h-1 opacity-60"
-              }`}
-          />
-          <i
-            className={`w-[2px] rounded-full bg-current transition-all ${soundEnabled
-                ? "h-4 animate-pulse [animation-delay:120ms]"
-                : "h-1 opacity-60"
-              }`}
-          />
-          <i
-            className={`w-[2px] rounded-full bg-current transition-all ${soundEnabled
-                ? "h-3 animate-pulse [animation-delay:240ms]"
-                : "h-1 opacity-60"
-              }`}
-          />
-        </span>
-        <span className="pointer-events-none absolute top-[calc(100%+9px)] right-0 hidden whitespace-nowrap rounded-full border border-white/20 bg-[#020b18]/88 px-3 py-1.5 font-mono text-xs font-bold tracking-[.12em] text-white uppercase opacity-0 shadow-xl backdrop-blur-xl transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 md:block">
-          Sound {soundEnabled ? "on" : "off"}
+        <svg className="size-5 stroke-current stroke-[1.8] relative z-10 transition-transform duration-300 group-hover:scale-110" viewBox="0 0 24 24" fill="none">
+          <rect x="3" y="5" width="18" height="14" rx="2.5" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="m5 7 7 6 7-6" />
+        </svg>
+        <span className="pointer-events-none absolute top-[calc(100%+9px)] right-0 hidden whitespace-nowrap rounded-full border border-cyan-400/30 bg-[#020b18]/90 px-3 py-1.5 font-mono text-xs font-bold tracking-[.12em] text-cyan-300 uppercase opacity-0 shadow-xl backdrop-blur-xl transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 md:block">
+          Contact Us
         </span>
       </motion.button>
     </header>

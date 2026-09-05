@@ -1,257 +1,235 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import LazyMount from "../ui/LazyMount";
 import GridRise from "../ocean/GridRise";
 
-function smoothstep(t: number): number {
-  const clamped = Math.max(0, Math.min(1, t));
-  return clamped * clamped * (3 - 2 * clamped);
+const clamp = (value: number) => Math.min(1, Math.max(0, value));
+function easeBetween(start: number, end: number, value: number) {
+  const t = clamp((value - start) / (end - start));
+  return t * t * (3 - 2 * t);
 }
+
+const styles = `
+  .octa-gate { position:relative; z-index:10; width:100%; height:200vh; height:200svh; }
+  .octa-gate *, .octa-gate *::before, .octa-gate *::after { box-sizing:border-box; }
+  .octa-gate__stage { position:sticky; top:0; height:100vh; height:100svh; width:100%; overflow:hidden; }
+  .octa-gate__shell { position:absolute; inset:0; pointer-events:none; }
+  .octa-gate__mask { position:absolute; inset:0; display:block; width:100%; height:100%; }
+  .octa-gate__grid { position:absolute; inset:45% -20% 0; opacity:0; pointer-events:none; mask-image:linear-gradient(transparent,#000 75%); -webkit-mask-image:linear-gradient(transparent,#000 75%); }
+  .octa-gate__frame { position:absolute; left:50%; top:55%; width:min(700px,84vw); height:min(392px,47vw,40svh); transform:translate(-50%,-50%); border:2px solid #fff; border-radius:24px; box-shadow:0 0 0 1px #73b9d455,0 0 32px #0ea5e933,inset 0 0 20px #0ea5e91a; }
+  .octa-gate__copy { position:absolute; top:9%; inset-inline:24px; text-align:center; color:#173348; }
+  .octa-gate__eyebrow { margin:0 0 15px; color:#32647e; font-size:12px; font-weight:600; letter-spacing:0.16em; text-transform:uppercase; }
+  .octa-gate__title { margin:0; font-family:var(--font-display, Georgia, serif); font-size:clamp(38px,4.5vw,64px); font-weight:400; letter-spacing:-0.045em; line-height:1.06; }
+  .octa-gate__caption { position:absolute; bottom:8%; inset-inline:24px; display:flex; flex-direction:column; align-items:center; gap:14px; color:#32647e; font-size:12px; letter-spacing:0.07em; }
+  .octa-gate__caption::after { content:""; width:1px; height:28px; background:#6494ac; }
+  .octa-gate__static-caption { display:none; }
+  @media (max-height:550px) { .octa-gate__copy { top:5%; } .octa-gate__title { font-size:34px; } .octa-gate__eyebrow { margin-bottom:8px; } .octa-gate__caption { bottom:5%; } .octa-gate__caption::after { height:14px; } }
+  @media (prefers-reduced-motion:reduce) {
+    .octa-gate { height:100vh; height:100svh; }
+    .octa-gate__stage { position:relative; }
+    .octa-gate__grid, .octa-gate__scroll-caption { display:none; }
+    .octa-gate__static-caption { display:inline; }
+  }
+`;
 
 export default function GateSection() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const zoomContainerRef = useRef<HTMLDivElement>(null);
-  const maskRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
   const shellRef = useRef<HTMLDivElement>(null);
-  const glowWrapperRef = useRef<HTMLDivElement>(null);
-  const gridRiseRef = useRef<HTMLDivElement>(null);
-
-  const targetProgress = useRef(0);
-  const currentProgress = useRef(0);
-  const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
+  const svgRef = useRef<SVGSVGElement>(null);
+  const holeRef = useRef<SVGRectElement>(null);
+  const frameRef = useRef<HTMLDivElement>(null);
+  const copyRef = useRef<HTMLDivElement>(null);
+  const captionRef = useRef<HTMLDivElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [showGrid, setShowGrid] = useState(false);
+  const instanceId = useId().replace(/:/g, "");
+  const maskId = `octa-gate-mask-${instanceId}`;
+  const gradId = `octa-gate-grad-${instanceId}`;
+  const stop2Ref = useRef<SVGStopElement>(null);
+  const stop3Ref = useRef<SVGStopElement>(null);
 
   useEffect(() => {
-    let animationFrameId: number;
-    let isRunning = false;
-    let isVisible = false;
+    const container = containerRef.current;
+    const stage = stageRef.current;
+    if (!container || !stage) return;
 
-    const lerp = () => {
-      const progress = targetProgress.current;
-      const diff = progress - currentProgress.current;
+    const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const desktopQuery = window.matchMedia("(min-width: 768px)");
+    let visible = true;
+    let frame = 0;
+    let previousTime = 0;
+    let current = 0;
+    let initialized = false;
+    let disposed = false;
 
-      if (!isVisible && !isRunning) {
-        isRunning = false;
-        return;
+    const updateGrid = () => {
+      if (desktopQuery.matches && !motionQuery.matches) {
+        setShowGrid(true);
       }
+    };
 
-      if (Math.abs(diff) < 0.0005) {
-        currentProgress.current = progress;
-        isRunning = false;
-        // Do one last DOM update to settle perfectly
+    const draw = (time: number) => {
+      frame = 0;
+      if (disposed) return;
+
+      // Read geometry first. Re-measure document position so upstream layout shifts
+      // cannot leave the scroll target stale.
+      const rect = container.getBoundingClientRect();
+      const width = stage.clientWidth;
+      const height = stage.clientHeight;
+      if (!width || !height) return;
+      const target = motionQuery.matches ? 0 : clamp(-rect.top / Math.max(1, rect.height - height));
+      const dt = previousTime ? Math.min(64, time - previousTime) : 16;
+      previousTime = time;
+      if (!initialized || motionQuery.matches) {
+        current = target;
+        initialized = true;
       } else {
-        currentProgress.current += diff * 0.15; // actually lerp for smoothness
+        current += (target - current) * (1 - Math.exp(-dt / 85));
+      }
+      const moving = Math.abs(target - current) > 0.0005;
+      if (!moving) current = target;
+
+      const baseWidth = Math.min(700, width * 0.84);
+      const baseHeight = Math.min(400, baseWidth * 0.56, height * 0.4);
+      // Enlarge only as far as required to cover this viewport. The SVG itself
+      // remains viewport-sized; no 2500px texture is scaled dozens of times.
+      const coverScale = Math.max((width + 80) / baseWidth, (height * 1.1 + 80) / baseHeight);
+      const scale = 1 + easeBetween(0.12, 0.94, current) * (coverScale - 1);
+      const holeWidth = baseWidth * scale;
+      const holeHeight = baseHeight * scale;
+      const centerY = height * 0.55;
+      const textOpacity = 1 - easeBetween(0.02, 0.22, current);
+      const borderOpacity = 1 - easeBetween(0.64, 0.92, current);
+
+      svgRef.current?.setAttribute("viewBox", `0 0 ${width} ${height}`);
+      const hole = holeRef.current;
+      if (hole) {
+        hole.setAttribute("x", String((width - holeWidth) / 2));
+        hole.setAttribute("y", String(centerY - holeHeight / 2));
+        hole.setAttribute("width", String(holeWidth));
+        hole.setAttribute("height", String(holeHeight));
+        hole.setAttribute("rx", String(24 * scale));
       }
 
-      const current = currentProgress.current;
+      // Smoothly fade the white SVG background to transparent around the bottom of the portal hole
+      // so no white background corners bleed out at the bottom left and bottom right.
+      const holeBottom = centerY + holeHeight / 2;
+      const fadeStart = Math.max(0, Math.min(100, ((holeBottom - 40) / height) * 100));
+      const fadeEnd = Math.max(0, Math.min(100, ((holeBottom + 10) / height) * 100));
+      if (stop2Ref.current) stop2Ref.current.setAttribute("offset", `${fadeStart}%`);
+      if (stop3Ref.current) stop3Ref.current.setAttribute("offset", `${fadeEnd}%`);
 
-      // Dynamically calculate ideal base scale for responsive phones (700px is the structural width + paddings)
-      const gateOptimalWidth = 740;
-      const baseScale = Math.min(1, window.innerWidth / gateOptimalWidth);
-
-      // Enforce a strict delay! Wait for 15% of the scroll before the Gate begins zooming.
-      const zoomRaw = Math.min(1, Math.max(0, (current - 0.15) / 0.85));
-      const zoomEased = zoomRaw * zoomRaw * (3 - 2 * zoomRaw);
-      // Mobile zoom travels exactly the same massive cinematic distance relative to its base!
-      const cameraScale = baseScale + zoomEased * (35 / baseScale);
-
-      // ── DIRECT DOM MUTATIONS (ZERO REACT RE-RENDERS!) ──
-      // 1. Cinematic Zoom (Cap scaling to 35x to protect compositor memory)
-      if (zoomContainerRef.current) {
-        zoomContainerRef.current.style.transform = `scale(${cameraScale})`;
+      if (frameRef.current) {
+        Object.assign(frameRef.current.style, {
+          width: `${baseWidth}px`,
+          height: `${baseHeight}px`,
+          transform: `translate(-50%, -50%) scale(${scale})`,
+          opacity: String(borderOpacity),
+          visibility: borderOpacity === 0 ? "hidden" : "visible",
+        });
       }
-
-      // 2. Shell Fade Out Transition
-      if (shellRef.current) {
-        const exitRaw = Math.min(1, Math.max(0, (current - 0.82) / 0.18));
-        shellRef.current.style.opacity = Math.max(0, 1 - exitRaw).toString();
+      if (shellRef.current) shellRef.current.style.opacity = "1";
+      if (copyRef.current) copyRef.current.style.opacity = String(textOpacity);
+      if (captionRef.current) captionRef.current.style.opacity = String(textOpacity);
+      if (gridRef.current) {
+        gridRef.current.style.opacity = "0.85";
+        // Cut out the actual portal opening without inheriting the frame's scale.
+        const gridWidth = width * 1.4;
+        const x1 = (gridWidth - holeWidth) / 2;
+        const x2 = (gridWidth + holeWidth) / 2;
+        const bottom = height * 0.1 + holeHeight / 2;
+        gridRef.current.style.clipPath = `polygon(0 0,${x1}px 0,${x1}px ${bottom}px,${x2}px ${bottom}px,${x2}px 0,100% 0,100% 100%,0 100%)`;
       }
+      if (moving) frame = requestAnimationFrame(draw);
+    };
 
-      // 3. Glow Intensity Transitions
-      if (glowWrapperRef.current) {
-        // Prevent drop-blur texture crash securely by hiding it exactly as it clears the screen viewport
-        const scaleFadeTarget = Math.max(0, 1 - Math.max(0, (cameraScale - 4.5) / 1.0));
-        const isOversized = cameraScale > 5.5; 
-        glowWrapperRef.current.style.display = isOversized ? "none" : "flex";
-
-        if (!isOversized) {
-          const glowIntensity = Math.min(1, current * 4);
-          const baseOpacity = scaleFadeTarget;
-          
-          const outerGlow = glowWrapperRef.current.children[0] as HTMLElement;
-          const gateStruct = glowWrapperRef.current.children[1] as HTMLElement;
-          const floorLight = glowWrapperRef.current.children[2] as HTMLElement;
-
-          if (outerGlow) outerGlow.style.opacity = (glowIntensity * 0.6 * baseOpacity).toString();
-          if (gateStruct) {
-            gateStruct.style.opacity = baseOpacity.toString();
-            gateStruct.style.boxShadow = `0 0 ${60 + (glowIntensity * 40)}px rgba(14,165,233,${0.2 + (glowIntensity * 0.2)}), inset 0 0 ${40 + (glowIntensity * 40)}px rgba(14,165,233,${0.1 + (glowIntensity * 0.2)})`;
-          }
-          if (floorLight) floorLight.style.opacity = (glowIntensity * 0.5 * baseOpacity).toString();
+    const schedule = () => {
+      if (!frame && visible && !disposed) frame = requestAnimationFrame(draw);
+    };
+    const onPreferenceChange = () => {
+      initialized = false;
+      updateGrid();
+      schedule();
+    };
+    const observer = typeof IntersectionObserver !== "undefined"
+      ? new IntersectionObserver(([entry]) => {
+        visible = entry.isIntersecting;
+        previousTime = 0;
+        initialized = false;
+        updateGrid();
+        if (visible) schedule();
+        else {
+          cancelAnimationFrame(frame);
+          frame = 0;
         }
-      }
-
-      // 4. Vector Mask & WebGL Texture Crash Protection
-      if (maskRef.current) {
-        maskRef.current.style.opacity = "1";
-        maskRef.current.style.display = cameraScale > 5.5 ? "none" : "flex"; 
-      }
-      
-      if (gridRiseRef.current) {
-        // Cancel out parent 2D zoom perfectly using exact screen center (16.666% of 60vh container)
-        gridRiseRef.current.style.transformOrigin = "50% 16.666%";
-        gridRiseRef.current.style.transform = `scale(${1 / cameraScale})`;
-
-        // Boolean fade detached exclusively from active scroll percentage
-        const shouldShowGrid = current >= 0.05 && current <= 0.25;
-        gridRiseRef.current.style.opacity = shouldShowGrid ? "1" : "0";
-      }
-
-      if (isRunning || isVisible) {
-        if (isRunning && Math.abs(diff) < 0.0005) {
-          // let it run once more to finish setting properties
-        } else {
-          animationFrameId = requestAnimationFrame(lerp);
-        }
-      }
-    };
-
-    let containerTopCache = 0;
-    let scrollableCache = 1000;
-
-    const updateGeometry = () => {
-      if (!containerRef.current) return;
-      // Cache absolute document position
-      const rect = containerRef.current.getBoundingClientRect();
-      containerTopCache = rect.top + window.scrollY;
-      scrollableCache = Math.max(1, rect.height - window.innerHeight);
-    };
-
-    const onScroll = () => {
-      const scrollPos = window.scrollY;
-      const relativeTop = containerTopCache - scrollPos;
-
-      targetProgress.current = Math.min(1, Math.max(0, -relativeTop / scrollableCache));
-
-      if (!isRunning) {
-        isRunning = true;
-        animationFrameId = requestAnimationFrame(lerp);
-      }
-    };
-
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", updateGeometry, { passive: true });
-    updateGeometry();
-    onScroll();
-
-    const observer = new IntersectionObserver((entries) => {
-      isVisible = entries[0].isIntersecting;
-      if (isVisible && !isRunning) {
-        isRunning = true;
-        animationFrameId = requestAnimationFrame(lerp);
-      }
-    });
-    if (containerRef.current) observer.observe(containerRef.current);
+      }, { rootMargin: "800px 0px" })
+      : null;
+    observer?.observe(container);
+    const resizeObserver = typeof ResizeObserver !== "undefined" ? new ResizeObserver(schedule) : null;
+    resizeObserver?.observe(stage);
+    resizeObserver?.observe(document.body);
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule, { passive: true });
+    motionQuery.addEventListener("change", onPreferenceChange);
+    desktopQuery.addEventListener("change", onPreferenceChange);
+    updateGrid();
+    schedule();
 
     return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", updateGeometry);
-      observer.disconnect();
-      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+      disposed = true;
+      cancelAnimationFrame(frame);
+      observer?.disconnect();
+      resizeObserver?.disconnect();
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+      motionQuery.removeEventListener("change", onPreferenceChange);
+      desktopQuery.removeEventListener("change", onPreferenceChange);
     };
   }, []);
 
   return (
-    <div ref={containerRef} id="gate" className="relative h-[200vh] w-full z-10">
-      <div className="sticky top-0 h-screen w-full overflow-hidden">
-
-        {/* MAIN SHELL CONTAINER (FADES TO BLACK AT END) */}
-        <div
-          ref={shellRef}
-          className="absolute inset-0 will-change-[opacity] overflow-hidden pointer-events-none"
-          style={{ opacity: 1 }}
-        >
-          {/* THE ZOOM CONTAINER */}
-          <div
-            ref={zoomContainerRef}
-            className="absolute inset-0 will-change-transform flex items-center justify-center transform-gpu origin-center"
-            style={{ transform: "scale(1)" }}
-          >
-            {/* ── THE FLAWLESS VECTOR HOLE PUNCH ── */}
-            {/* Abandoning box-shadow entirely to aggressively protect Safari/iOS WebGL compositor limits. 
-                Using a massive Vector SVG `<rect>` with a `<mask />` is mathematically flawless and uses 0 VRAM! */}
-            <div ref={maskRef} className="absolute z-[0] pointer-events-none -mt-[5vh] flex items-center justify-center">
-              <svg
-                className="w-[2500px] h-[2500px]"
-                viewBox="0 0 2500 2500"
-                preserveAspectRatio="xMidYMid meet"
-              >
-                <defs>
-                  <mask id="gate-hole-mask">
-                    <rect width="2500" height="2500" fill="white" />
-                    <rect x="910" y="1060" width="680" height="380" rx="30" fill="black" />
-                  </mask>
-                </defs>
-                <rect width="2500" height="2500" fill="#f0f9ff" mask="url(#gate-hole-mask)" />
-              </svg>
-            </div>
-
-            {/* ── THE WATER GRIDRISE ── */}
-            {/* Standard Desktop layout. Precision U-shaped clip-path meticulously positioned to trim 
-                the gate bounds visually on desktop monitors. Disabled entirely on mobile 
-                to avoid iOS coordinate masking bugs and save performance. */}
-            <div
-              ref={gridRiseRef}
-              className="absolute bottom-0 h-[60vh] w-[300%] -left-[100%] z-10 pointer-events-none transition-opacity duration-1000 will-change-transform"
-              style={{
-                opacity: 0,
-                maskImage: 'radial-gradient(ellipse at bottom center, black 40%, transparent 80%)',
-                WebkitMaskImage: 'radial-gradient(ellipse at bottom center, black 40%, transparent 80%)',
-                clipPath: `polygon(
-                  0% 0%, 
-                  calc(50% - 348px) 0%, 
-                  calc(50% - 348px) calc(5vh + 198px), 
-                  calc(50% + 348px) calc(5vh + 198px), 
-                  calc(50% + 348px) 0%, 
-                  100% 0%, 
-                  100% 100%, 
-                  0% 100%
-                )`
-              }}
-            >
-              {!isMobile && (
-                <LazyMount rootMargin="800px 0px">
-                  <GridRise
-                    ambientColor="#f0f9ff"
-                    boxColor="#0ea5e9"
-                    baseHeight={1.2}
-                    waveStrength={3.0}
-                    waveSpeed={1.0}
-                    gridSize={80}
-                    cameraPos={[32, 16, 32]}
-                  />
-                </LazyMount>
-              )}
-            </div>
-            {/* ── THE HORIZONTAL RECTANGLE GATE ── */}
-            <div ref={glowWrapperRef} className="relative w-[700px] h-[400px] z-20 flex items-center justify-center -mt-[5vh]">
-              {/* Outer Glow Ring */}
-              <div
-                className="absolute inset-0 rounded-[2rem] border border-sky-400 blur-xl scale-110 pointer-events-none"
-                style={{ opacity: 0 }}
-              />
-
-              {/* The Horizontal Gate Portal Structure */}
-              <div
-                className="relative w-[700px] h-[400px] rounded-[2rem] border-4 border-white bg-transparent shadow-[0_0_80px_rgba(14,165,233,0.3),inset_0_0_60px_rgba(14,165,233,0.2)] flex items-center justify-center backdrop-blur-[2px]"
-              >
-              </div>
-
-              {/* Floor projection light under the gate */}
-              <div
-                className="absolute inset-x-0 -bottom-32 h-64 bg-sky-400/40 blur-[60px] rounded-[100%] scale-x-150 pointer-events-none"
-                style={{ opacity: 0 }}
-              />
-            </div>
-
+    <div ref={containerRef} id="gate" className="octa-gate">
+      <style>{styles}</style>
+      <div ref={stageRef} className="octa-gate__stage">
+        <div ref={shellRef} className="octa-gate__shell">
+          <svg ref={svgRef} className="octa-gate__mask" aria-hidden="true" focusable="false">
+            <defs>
+              <mask id={maskId} x="0" y="0" width="100%" height="100%" maskUnits="userSpaceOnUse">
+                <rect width="100%" height="100%" fill="white" />
+                <rect ref={holeRef} x="8%" y="35%" width="84%" height="40%" rx="24" fill="black" />
+              </mask>
+              <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#f0f9ff" stopOpacity="1" />
+                <stop ref={stop2Ref} offset="40%" stopColor="#f0f9ff" stopOpacity="1" />
+                <stop ref={stop3Ref} offset="55%" stopColor="#f0f9ff" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            <rect width="100%" height="100%" fill={`url(#${gradId})`} mask={`url(#${maskId})`} />
+          </svg>
+          <div ref={gridRef} className="octa-gate__grid" aria-hidden="true">
+            {showGrid && (
+              <LazyMount rootMargin="800px 0px">
+                <GridRise
+                  ambientColor="#e0f2fe"
+                  boxColor="#38bdf8"
+                  baseHeight={1.8}
+                  waveStrength={2}
+                  waveSpeed={0.65}
+                  gridSize={85}
+                  cameraPos={[32, 16, 32]}
+                />
+              </LazyMount>
+            )}
+          </div>
+          <div ref={frameRef} className="octa-gate__frame" aria-hidden="true" />
+          <div ref={copyRef} className="octa-gate__copy">
+            <p className="octa-gate__eyebrow">The next chapter</p>
+            <h2 className="octa-gate__title">Step into what comes next.</h2>
+          </div>
+          <div ref={captionRef} className="octa-gate__caption" aria-hidden="true">
+            <span className="octa-gate__scroll-caption">Scroll to explore</span>
+            <span className="octa-gate__static-caption">Explore what comes next</span>
           </div>
         </div>
       </div>

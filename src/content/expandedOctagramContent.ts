@@ -12,10 +12,9 @@ export const journeyNavigation: JourneyDestination[] = [
   // ── Gate 2: Dark Experience (Abyss - Unified Particle Sphere) ──
   { id: "projects", label: "Portfolio", progress: 0.52 },
   { id: "vision", label: "Philosophy", progress: 0.76 },
-  { id: "impact", label: "Impact", progress: 0.84 },
+  { id: "impact", label: "How It Works", progress: 0.84 },
   { id: "partners", label: "Ecosystem", progress: 0.91 },
-  // ── Gate 3: Chapter 2 Image Sequence (Future + Footer) ──
-  { id: "future", label: "Future", progress: 0.97 },
+  // ── Gate 3: Chapter 2 Image Sequence (Footer) ──
   { id: "contact", label: "Get In Touch", progress: 0.99 },
 ];
 

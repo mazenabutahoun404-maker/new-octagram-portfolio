@@ -53,9 +53,14 @@ function InstancedGrid({
   const plane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), []);
   const mousePos = useMemo(() => new THREE.Vector3(9999, 0, 9999), []);
 
+  // Pre-instantiated reusable colors for per-instance hover highlights (Light blue base, Darker blue hover)
+  const baseColorObj = useMemo(() => new THREE.Color(boxColor), [boxColor]);
+  const highlightColorObj = useMemo(() => new THREE.Color("#0284c7"), []);
+  const tempColor = useMemo(() => new THREE.Color(), []);
+
   useFrame((state) => {
     if (!meshRef.current || !isVisibleRef.current) return;
-    
+
     // Calculate world position of mouse
     raycaster.setFromCamera(pointer, camera);
     raycaster.ray.intersectPlane(plane, mousePos);
@@ -65,39 +70,44 @@ function InstancedGrid({
     particles.forEach((particle, i) => {
       // Calculate distance from center for a radial wave effect
       const dist = Math.sqrt(particle.x * particle.x + particle.z * particle.z);
-      
+
       // Calculate geometric distance from the physical mouse pointer!
       const dx = particle.x - mousePos.x;
       const dz = particle.z - mousePos.z;
-      const mouseDist = Math.sqrt(dx*dx + dz*dz);
-      
-      // Calculate the DESIRED lift based on proximity
+      const mouseDist = Math.sqrt(dx * dx + dz * dz);
+
       let targetLift = 0;
-      if (mouseDist < 6.0) { // Wider, highly organic radius
-        targetLift = (6.0 - mouseDist) * 1.2; 
+      if (mouseDist < 6.5) {
+        targetLift = (6.5 - mouseDist) * 1.6;
       }
-      
-      // Smoothly interpolate the actual lift over time (Buttery smooth delay)
-      lifts[i] += (targetLift - lifts[i]) * 0.08;
+
+      lifts[i] += (targetLift - lifts[i]) * 0.1;
       const hoverLift = lifts[i];
-      
+
       // Complex wave: radial + moving along X/Z axis + noise
-      const heightOffset = 
-        Math.sin(dist * 0.5 - time) * waveStrength * 0.5 + 
+      const heightOffset =
+        Math.sin(dist * 0.5 - time) * waveStrength * 0.5 +
         Math.sin(particle.x * 0.4 + time * 0.8) * Math.cos(particle.z * 0.4 + time * 0.6) * waveStrength * 0.5;
 
       const finalHeight = Math.max(0.1, baseHeight + heightOffset + hoverLift);
 
-      // Set position and scale (we scale Y to change height)
-      // Moving Y position up by half the height so the bottom stays flat
+      // Set position and scale (keeping original box size and dimensions intact)
       dummy.position.set(particle.x, finalHeight / 2 - 2, particle.z);
       dummy.scale.set(boxSize, finalHeight, boxSize);
       dummy.updateMatrix();
 
       meshRef.current!.setMatrixAt(i, dummy.matrix);
+
+      // Dynamic hover color boost: strong transition to vibrant ice blue (#00f5d4) for hovered group
+      const colorBlend = Math.min(1, hoverLift / 2.5);
+      tempColor.copy(baseColorObj).lerp(highlightColorObj, colorBlend);
+      meshRef.current!.setColorAt(i, tempColor);
     });
 
     meshRef.current.instanceMatrix.needsUpdate = true;
+    if (meshRef.current.instanceColor) {
+      meshRef.current.instanceColor.needsUpdate = true;
+    }
   });
 
   return (
@@ -109,9 +119,9 @@ function InstancedGrid({
     >
       <boxGeometry args={[1, 1, 1]} />
       {/* We use MeshStandardMaterial without flat shading so edges catch light perfectly like the image */}
-      <meshStandardMaterial 
-        color={boxColor} 
-        roughness={0.4} 
+      <meshStandardMaterial
+        color={boxColor}
+        roughness={0.4}
         metalness={0.1}
         envMapIntensity={0.5}
       />
@@ -147,30 +157,39 @@ export default function GridRise({
     <div ref={containerRef} className={`absolute inset-0 w-full h-full ${transparent ? "" : "bg-black"}`}>
       <Canvas
         camera={{ position: cameraPos, fov: 28 }}
-        gl={{ antialias: true, alpha: transparent }}
+        gl={{ antialias: true, alpha: transparent, powerPreference: "high-performance", preserveDrawingBuffer: false }}
         dpr={[1, 1.5]}
+        onCreated={({ gl }) => {
+          gl.domElement.addEventListener(
+            "webglcontextlost",
+            (event) => {
+              event.preventDefault();
+            },
+            false
+          );
+        }}
       >
         {!transparent && <color attach="background" args={[ambientColor]} />}
         <fog attach="fog" args={[ambientColor, 10, cameraPos[0] * 2.2]} />
-        
-        {/* Stronger lighting for vivid colors */}
-        <ambientLight intensity={transparent ? 2.5 : 1.2} />
-        <directionalLight 
-          position={[10, 20, 5]} 
-          intensity={transparent ? 3.5 : 2.5} 
-          castShadow 
+
+        {/* Calibrated lighting for rich contrast and depth */}
+        <ambientLight intensity={transparent ? 2.5 : 0.85} />
+        <directionalLight
+          position={[10, 20, 5]}
+          intensity={transparent ? 3.5 : 1.8}
+          castShadow
           shadow-mapSize={[1024, 1024]}
         />
-        <directionalLight 
-          position={[-10, 10, -10]} 
-          intensity={transparent ? 2.0 : 1.0} 
-          color="#ffffff" 
+        <directionalLight
+          position={[-10, 10, -10]}
+          intensity={transparent ? 2.0 : 0.8}
+          color="#e0f2fe"
         />
-        
-        <InstancedGrid 
-          gridSize={gridSize} 
-          spacing={spacing} 
-          boxSize={boxSize} 
+
+        <InstancedGrid
+          gridSize={gridSize}
+          spacing={spacing}
+          boxSize={boxSize}
           baseHeight={baseHeight}
           waveStrength={waveStrength}
           waveSpeed={waveSpeed}

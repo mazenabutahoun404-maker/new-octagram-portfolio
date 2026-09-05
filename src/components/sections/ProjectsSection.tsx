@@ -1,282 +1,351 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useState } from "react";
 import { companyAssets } from "../../lib/companyAssets";
-import { motion, useScroll, useTransform } from "framer-motion";
-// No imports needed from ScrollWaveField
+
 type Project = {
   id: string;
   category: string;
-  status: string;
   title: string;
+  subtitle: string;
   description: string;
-  meta: string;
-  accent: string;
-  palette: [string, string, string];
+  tags: readonly string[];
   image?: string;
   url?: string;
+  accent: string;
+  accentGlow: string;
 };
 
-const PROJECTS: Project[] = [
+const PROJECTS: readonly Project[] = [
   {
     id: "octa-clinic",
-    category: "Healthcare product",
-    status: "Featured product",
+    category: "Healthcare Platform",
     title: "Octa Clinic System",
+    subtitle: "Clinical Operations & Telemetry",
     description:
-      "A clinical management product engineered for streamlined medical appointments, team operations, and patient workflows.",
-    meta: "Product platform",
-    accent: "#FF7E5F",
-    palette: ["#FF7E5F", "#00F5D4", "#BFFCF2"],
+      "An integrated clinical management ecosystem streamlining patient appointments, multi-doctor scheduling, medical records, and live telemetry workflows.",
+    tags: ["Clinic Operations", "Patient Workflows", "Telemetry Data"],
     image: companyAssets.projects.octaClinic,
+    accent: "#FF7E5F",
+    accentGlow: "rgba(255, 126, 95, 0.25)",
   },
   {
     id: "thaaer-coaching",
-    category: "Web & Coaching",
-    status: "Active Platform",
+    category: "Coaching Platform",
     title: "Thaaer Online Coaching",
+    subtitle: "Digital Coaching & Analytics",
     description:
-      "A holistic online fitness and wellness coaching platform featuring dynamic user programs, tracking, and seamless guidance.",
-    meta: "Coaching Platform",
-    accent: "#00F5D4",
-    palette: ["#00F5D4", "#00BBF9", "#D7FFF9"],
+      "A high-performance digital coaching environment uniting custom training programs, real-time client analytics, and interactive progress tracking.",
+    tags: ["Web Platform", "Coaching Analytics", "Live Workflows"],
     image: companyAssets.projects.onlineCoaching,
-    url: "https://thaaerfit.com/"
+    url: "https://thaaerfit.com/",
+    accent: "#00F5D4",
+    accentGlow: "rgba(0, 245, 212, 0.25)",
   },
   {
     id: "octagram-portfolio",
-    category: "Digital Experience",
-    status: "Web ecosystem",
+    category: "Interactive Flagship",
     title: "The Octagram Portfolio",
+    subtitle: "Spatial Design & WebGL 3D",
     description:
-      "An immersive cinematic diving experience leveraging pure code to build 3D physics, spatial web design, and interactive performance.",
-    meta: "Immersive WebGL",
-    accent: "#00BBF9",
-    palette: ["#00BBF9", "#5A4AE0", "#B8F2FF"],
+      "An immersive digital flagship exploring real-time 3D rendering, spatial UI design, dynamic ocean depth canvas, and reactive particle networks.",
+    tags: ["Spatial Design", "WebGL", "Interactive Motion"],
     image: companyAssets.projects.portfolio,
-    url: "https://mazenabutahoun404-maker.github.io/mazen-portofolio/"
-  },
-  {
-    id: "octa-care",
-    category: "Connected Care",
-    status: "In Development",
-    title: "Octa Care",
-    description:
-      "Something meaningful is taking shape. Details coming soon.",
-    meta: "Coming Soon",
-    accent: "#FFC857",
-    palette: ["#FFC857", "#FF7E5F", "#FFE8A3"],
-  },
-  {
-    id: "octa-drip",
-    category: "Specialized Wellness",
-    status: "In Development",
-    title: "Octa Drip",
-    description:
-      "A new standard is being engineered. Stay tuned.",
-    meta: "Coming Soon",
+    url: "https://mazenabutahoun404-maker.github.io/mazen-portofolio/",
     accent: "#00BBF9",
-    palette: ["#00BBF9", "#5A4AE0", "#B8F2FF"],
+    accentGlow: "rgba(0, 187, 249, 0.25)",
   },
 ];
 
-const clamp = (value: number, min = 0, max = 1) =>
-  Math.min(max, Math.max(min, value));
-
-function smoothstep(start: number, end: number, value: number) {
-  const t = clamp((value - start) / Math.max(0.0001, end - start));
-  return t * t * (3 - 2 * t);
-}
-
-function hexToRgb(hex: string): [number, number, number] {
-  const normalized = hex.replace("#", "");
-  const full =
-    normalized.length === 3
-      ? normalized
-        .split("")
-        .map((character) => character + character)
-        .join("")
-      : normalized;
-
-  return [
-    Number.parseInt(full.slice(0, 2), 16),
-    Number.parseInt(full.slice(2, 4), 16),
-    Number.parseInt(full.slice(4, 6), 16),
-  ];
-}
-
-function mixHex(from: string, to: string, amount: number) {
-  const a = hexToRgb(from);
-  const b = hexToRgb(to);
-  const t = clamp(amount);
-  const channel = (index: number) =>
-    Math.round(a[index] + (b[index] - a[index]) * t)
-      .toString(16)
-      .padStart(2, "0");
-
-  return `#${channel(0)}${channel(1)}${channel(2)}`;
-}
-
-function paletteAt(position: number): string[] {
-  const fromIndex = Math.floor(clamp(position, 0, PROJECTS.length - 1));
-  const toIndex = Math.min(PROJECTS.length - 1, fromIndex + 1);
-  const mix = position - fromIndex;
-
-  return PROJECTS[fromIndex].palette.map((color, index) =>
-    mixHex(color, PROJECTS[toIndex].palette[index], mix),
-  );
-}
-
-function useMediaQuery(query: string) {
-  const [matches, setMatches] = useState(false);
-
-  useEffect(() => {
-    const media = window.matchMedia(query);
-    const update = () => setMatches(media.matches);
-    update();
-    media.addEventListener("change", update);
-    return () => media.removeEventListener("change", update);
-  }, [query]);
-
-  return matches;
-}
-
-function ProjectCard({ project }: { project: Project }) {
-  const ref = useRef<HTMLAnchorElement | HTMLElement>(null);
-  const isUpcoming = !project.image;
-  
-  // Track this specific card's position relative to the viewport
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["0 1", "1 0"], // Starts when element enters bottom, ends when leaves top
-  });
-
-  // Calculate 3D wheel transformations
-  const scale = useTransform(scrollYProgress, [0.1, 0.5, 0.9], [0.85, 1, 0.85]);
-  const opacity = useTransform(scrollYProgress, [0.1, 0.45, 0.55, 0.9], [0.3, 1, 1, 0.3]);
-  const rotateX = useTransform(scrollYProgress, [0.1, 0.5, 0.9], [-15, 0, 15]);
-
-  const Tag = project.url ? motion.a : motion.article;
-
-  return (
-    <Tag
-      // @ts-ignore dynamic tag issues with Framer Motion typing
-      ref={ref}
-      href={project.url}
-      target={project.url ? "_blank" : undefined}
-      rel={project.url ? "noopener noreferrer" : undefined}
-      style={{
-        scale,
-        opacity,
-        rotateX,
-        transformPerspective: 1200,
-        transformStyle: "preserve-3d",
-      }}
-      className={`group relative w-full overflow-hidden rounded-md border border-white/10 bg-black p-6 sm:p-8 transition-colors duration-500 hover:border-white/25 block ${project.url ? "cursor-pointer" : ""}`}
-    >
-      {/* Cinematic Background Image Area */}
-      {project.image && (
-        <div className="absolute inset-y-0 right-0 w-full md:w-[85%] group-hover:w-full z-0 overflow-hidden opacity-100 pointer-events-none transition-all duration-700">
-          <img
-            src={project.image}
-            alt={project.title}
-            className="w-full h-full object-cover object-center scale-[1.02] origin-center"
-          />
-          {/* Gradient Mask for seamless blending into left text area */}
-          <div className="absolute inset-0 bg-gradient-to-r from-black via-black/60 to-transparent group-hover:opacity-0 transition-opacity duration-700" />
-          {/* Very subtle bottom vignette */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent group-hover:opacity-0 transition-opacity duration-700" />
-        </div>
-      )}
-
-      {/* Subtle animated gradient background for upcoming cards with no image */}
-      {isUpcoming && (
-        <div
-          className="absolute inset-0 z-0 opacity-[0.08] group-hover:opacity-[0.15] transition-opacity duration-700 pointer-events-none"
-          style={{
-            background: `radial-gradient(ellipse at 70% 50%, ${project.accent}40 0%, transparent 60%)`,
-          }}
-        />
-      )}
-
-      {/* Foreground Content */}
-      <div className={`relative z-10 w-full flex flex-col h-full ${isUpcoming ? "" : "pt-48 md:pt-0 md:w-[55%] group-hover:opacity-10 group-hover:blur-sm"} transition-all duration-700`}>
-        <div className="flex items-center gap-4 mb-4">
-          <span
-            className="font-sans text-[10px] sm:text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-full border border-current/20 bg-current/10 backdrop-blur-sm"
-            style={{ color: project.accent }}
-          >
-            {project.category}
-          </span>
-          {isUpcoming && (
-            <span
-              className="font-mono text-[10px] sm:text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full border border-white/15 bg-white/[0.06]"
-              style={{ color: project.accent }}
-            >
-              {project.status}
-            </span>
-          )}
-        </div>
-
-        <h3 className={`font-serif text-[clamp(1.8rem,3vw,2.5rem)] font-bold leading-tight tracking-tight text-white mb-4 drop-shadow-lg ${isUpcoming ? "group-hover:text-current transition-colors duration-300" : ""}`} style={isUpcoming ? { "--tw-text-opacity": 1, color: undefined } as any : undefined}>
-          <span className={isUpcoming ? "group-hover:text-[var(--card-accent)]" : ""} style={isUpcoming ? ({ "--card-accent": project.accent } as any) : undefined}>
-            {project.title}
-          </span>
-        </h3>
-        <p className="text-sm sm:text-base leading-relaxed text-gray-300 font-light max-w-lg mb-10 drop-shadow-md">
-          {project.description}
-        </p>
-
-        <div className="flex items-center gap-6 mt-auto">
-          <span className="font-mono text-xs uppercase tracking-widest text-gray-500">{project.meta}</span>
-          {!isUpcoming && (
-            <span className="font-mono text-xs uppercase tracking-widest drop-shadow-md" style={{ color: project.accent }}>
-              {project.status}
-            </span>
-          )}
-        </div>
-      </div>
-    </Tag>
-  );
-}
+const UPCOMING = [
+  {
+    id: "octa-care",
+    title: "Octa Care",
+    category: "Connected Remote Healthcare",
+    status: "Active R&D",
+  },
+  {
+    id: "octa-drip",
+    title: "Octa Drip",
+    category: "Specialized Wellness Tech",
+    status: "Private Beta",
+  },
+] as const;
 
 export default function ProjectsSection() {
-  // Removed scroll sync since we are moving away from scroll-jacking
+  const [activeId, setActiveId] = useState<string>(PROJECTS[0].id);
+  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
+
+  const activeProject = PROJECTS.find((p) => p.id === activeId) || PROJECTS[0];
+
+  const handleImageError = (id: string) => {
+    setFailedImages((prev) => ({ ...prev, [id]: true }));
+  };
 
   return (
     <section
       id="projects"
       aria-labelledby="projects-title"
-      className="relative z-10 w-full min-h-screen pt-16 pb-32 bg-transparent flex items-center"
+      className="relative z-10 w-full max-w-[1360px] mx-auto px-4 md:px-8 py-20 scroll-mt-24 text-white"
     >
-      <div className="w-full h-full relative flex items-center px-5 sm:px-10 lg:px-[5vw]">
-
-        {/* ── 2. EDITORIAL CONTENT STAGE ── */}
-        <div className="w-full max-w-[1360px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16 items-start relative z-20">
-          
-          <div className="col-span-1 lg:col-span-5 flex flex-col justify-center gap-6 lg:sticky lg:top-40">
-            <header>
-              <div className="inline-flex items-center gap-3 px-3.5 py-1 rounded-full border border-cyan-400/25 bg-cyan-400/5 font-mono text-xs font-bold text-[#00F5D4] uppercase tracking-[0.25em]">
-                <span className="size-1.5 rounded-full bg-[#00F5D4] animate-pulse shadow-[0_0_8px_#00F5D4]" />
-                Portfolio
-              </div>
-              <h2
-                id="projects-title"
-                className="mt-4 font-serif text-[clamp(2.5rem,5vw,5.5rem)] font-bold leading-[0.96] tracking-tight text-white mix-blend-screen"
-              >
-                VENTURES.
-              </h2>
-              <p className="mt-4 text-base md:text-lg text-white/50 font-light max-w-md">
-                Engineered digital products built as scalable operational ecosystems. We transform bold ideas into uncompromising reality.
-              </p>
-            </header>
+      {/* ── Section Header ── */}
+      <header className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12">
+        <div className="flex flex-col gap-4">
+          <div className="inline-flex items-center gap-3 px-4 py-1.5 rounded-full border border-cyan-400/30 bg-cyan-400/10 font-mono text-xs font-bold text-cyan-300 uppercase tracking-[0.25em] w-fit backdrop-blur-md shadow-[0_0_15px_rgba(0,245,212,0.15)]">
+            <span className="size-2 rounded-full bg-cyan-300 shadow-[0_0_10px_#00F5D4]" />
+            Selected Portfolio Showcase
           </div>
 
-          <div className="col-span-1 lg:col-span-7 flex flex-col gap-10 lg:gap-24" style={{ perspective: "1500px" }}>
-            {PROJECTS.map((project) => (
-              <ProjectCard key={project.id} project={project} />
-            ))}
+          <h2
+            id="projects-title"
+            className="font-serif text-[clamp(2.5rem,5vw,4.5rem)] font-extrabold leading-[1.05] tracking-tight bg-gradient-to-r from-white via-slate-100 to-cyan-200 bg-clip-text text-transparent"
+          >
+            Ideas put to work.
+          </h2>
+        </div>
+
+        <p className="text-base md:text-lg text-slate-200 leading-relaxed font-normal max-w-md">
+          From clinical management systems to high-performance spatial WebGL platforms — explore our flagship engineering builds.
+        </p>
+      </header>
+
+      {/* ── Liquid Glass Project Switcher Tabs ── */}
+      <div className="flex flex-wrap items-center gap-3 mb-10 p-2 rounded-2xl border border-white/15 bg-slate-950/70 backdrop-blur-xl shadow-2xl w-fit">
+        {PROJECTS.map((project, index) => {
+          const isActive = project.id === activeProject.id;
+          return (
+            <button
+              key={project.id}
+              onClick={() => setActiveId(project.id)}
+              className={`relative inline-flex items-center gap-3 px-5 py-3 rounded-xl font-mono text-xs font-bold uppercase tracking-wider transition-all duration-300 ${
+                isActive
+                  ? "bg-slate-900 text-white border border-cyan-400/40 shadow-[0_0_20px_rgba(0,245,212,0.2)]"
+                  : "text-slate-300 hover:text-white hover:bg-white/[0.05]"
+              }`}
+            >
+              <span
+                className="size-2 rounded-full transition-colors"
+                style={{ backgroundColor: isActive ? project.accent : "#475569" }}
+              />
+              <span>0{index + 1}. {project.title}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── FEATURE STAGE: BIG IMAGE SHOWCASE ── */}
+      <div className="relative rounded-3xl border border-white/15 bg-slate-950/80 backdrop-blur-2xl p-6 md:p-10 shadow-2xl overflow-hidden mb-16">
+        {/* Background Ambient Radial Glow matching active project accent - positioned at left screen (20% 35%) */}
+        <div
+          className="absolute -inset-20 opacity-45 pointer-events-none transition-all duration-700"
+          style={{
+            background: `radial-gradient(circle at 20% 35%, ${activeProject.accentGlow}, transparent 65%)`,
+          }}
+        />
+
+        {/* Top Accent Line */}
+        <div
+          className="absolute top-0 left-0 right-0 h-1 transition-all duration-500"
+          style={{ backgroundColor: activeProject.accent }}
+        />
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center relative z-10">
+          {/* ── BIG IMAGE DISPLAY CONTAINER (7 columns on desktop) ── */}
+          <div className="lg:col-span-7 flex flex-col gap-4">
+            {/* Window Frame Bar */}
+            <div className="flex items-center justify-between px-4 py-2.5 rounded-t-xl bg-slate-900/90 border border-white/15 border-b-0 backdrop-blur-md">
+              <div className="flex items-center gap-2">
+                <span className="size-3 rounded-full bg-rose-500/80" />
+                <span className="size-3 rounded-full bg-amber-500/80" />
+                <span className="size-3 rounded-full bg-emerald-500/80" />
+              </div>
+              <span className="font-mono text-[11px] text-cyan-300/80 font-semibold tracking-wide">
+                {activeProject.category} — Live Preview
+              </span>
+            </div>
+
+            {/* BIG IMAGE FRAME */}
+            <div className="relative w-full rounded-b-xl border border-white/15 bg-slate-900/90 p-4 md:p-6 overflow-hidden flex items-center justify-center shadow-2xl min-h-[380px] sm:min-h-[460px] md:min-h-[520px] lg:min-h-[560px]">
+              {activeProject.image && !failedImages[activeProject.id] ? (
+                <img
+                  key={activeProject.id}
+                  src={activeProject.image}
+                  alt={`${activeProject.title} Interface Preview`}
+                  width={1920}
+                  height={1080}
+                  loading="eager"
+                  decoding="async"
+                  onError={() => handleImageError(activeProject.id)}
+                  className="w-full h-full max-h-[560px] object-contain rounded-lg shadow-2xl transition-all duration-700 animate-fadeIn"
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center p-12 text-center">
+                  <span className="font-serif text-3xl font-bold text-white mb-2">
+                    {activeProject.title}
+                  </span>
+                  <span className="font-mono text-sm text-cyan-300">
+                    {activeProject.subtitle}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ── GLASS DETAILS DRAWER (5 columns on desktop) ── */}
+          <div className="lg:col-span-5 flex flex-col justify-between gap-6 p-6 md:p-8 rounded-2xl border border-white/15 bg-slate-900/80 backdrop-blur-xl shadow-2xl">
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <span
+                  className="font-mono text-xs font-bold uppercase tracking-[0.2em] px-3.5 py-1 rounded-full border shadow-sm"
+                  style={{
+                    color: activeProject.accent,
+                    borderColor: `${activeProject.accent}44`,
+                    backgroundColor: `${activeProject.accent}15`,
+                  }}
+                >
+                  {activeProject.category}
+                </span>
+
+                <span className="font-mono text-xs text-slate-300 font-bold">
+                  Flagship Build
+                </span>
+              </div>
+
+              <h3 className="font-serif text-3xl md:text-4xl font-extrabold text-white">
+                {activeProject.title}
+              </h3>
+
+              <p className="font-mono text-xs font-bold uppercase tracking-wider text-cyan-300/90">
+                {activeProject.subtitle}
+              </p>
+
+              <p className="text-base text-slate-200 font-normal leading-relaxed">
+                {activeProject.description}
+              </p>
+            </div>
+
+            {/* Deliverables / Tags */}
+            <div className="flex flex-col gap-4 pt-4 border-t border-white/15">
+              <div className="flex flex-wrap gap-2">
+                {activeProject.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="font-mono text-xs font-semibold px-3 py-1 rounded-md border border-white/15 bg-white/[0.05] text-slate-100"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+
+              {activeProject.url ? (
+                <a
+                  href={activeProject.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-3 w-full py-4 rounded-xl border border-cyan-400/40 bg-gradient-to-r from-cyan-950/80 to-slate-900 text-cyan-300 font-mono text-xs font-bold uppercase tracking-wider hover:bg-cyan-400/20 hover:border-cyan-300 transition-all duration-300 shadow-[0_0_20px_rgba(0,245,212,0.2)] mt-2"
+                >
+                  <span>Visit Live Platform</span>
+                  <svg className="size-4 stroke-current stroke-[2.5]" viewBox="0 0 24 24" fill="none">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" />
+                  </svg>
+                </a>
+              ) : (
+                <div className="inline-flex items-center justify-center gap-2 w-full py-3.5 rounded-xl border border-white/15 bg-white/[0.04] text-slate-300 font-mono text-xs font-semibold uppercase tracking-wider mt-2">
+                  <span>Enterprise Deployment</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
+
+      {/* ── SECONDARY GALLERY GRID (Large Thumbnail Cards) ── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+        {PROJECTS.map((project, index) => {
+          const isSelected = project.id === activeProject.id;
+          return (
+            <div
+              key={project.id}
+              onClick={() => setActiveId(project.id)}
+              className={`group relative rounded-2xl border backdrop-blur-xl p-5 flex flex-col justify-between cursor-pointer transition-all duration-500 shadow-xl overflow-hidden ${
+                isSelected
+                  ? "border-cyan-400/50 bg-slate-900/90 ring-1 ring-cyan-400/30"
+                  : "border-white/15 bg-slate-950/80 hover:border-white/30 hover:bg-slate-900/80"
+              }`}
+            >
+              {/* Media Thumbnail Container */}
+              <div className="relative w-full h-44 rounded-xl border border-white/15 bg-slate-900 overflow-hidden mb-4 p-2 flex items-center justify-center">
+                {project.image && !failedImages[project.id] ? (
+                  <img
+                    src={project.image}
+                    alt={`${project.title} thumbnail`}
+                    width={640}
+                    height={400}
+                    loading="lazy"
+                    decoding="async"
+                    onError={() => handleImageError(project.id)}
+                    className="w-full h-full object-contain rounded-md transition-transform duration-500 group-hover:scale-105"
+                  />
+                ) : (
+                  <span className="font-serif text-lg font-bold text-white/80">{project.title}</span>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span
+                    className="font-mono text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded border"
+                    style={{
+                      color: project.accent,
+                      borderColor: `${project.accent}44`,
+                      backgroundColor: `${project.accent}15`,
+                    }}
+                  >
+                    0{index + 1}. {project.category}
+                  </span>
+
+                  <span className="font-mono text-xs text-slate-300 font-bold">
+                    {isSelected ? "Active" : "View"}
+                  </span>
+                </div>
+
+                <h4 className="font-serif text-xl font-bold text-white group-hover:text-cyan-200 transition-colors">
+                  {project.title}
+                </h4>
+                <p className="text-xs text-slate-200 line-clamp-2 font-normal leading-relaxed">
+                  {project.description}
+                </p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── R&D DEVELOPMENT PIPELINE FOOTER ── */}
+      <aside className="p-8 rounded-2xl border border-white/15 bg-slate-950/80 backdrop-blur-xl flex flex-col md:flex-row md:items-center justify-between gap-8 shadow-2xl">
+        <div className="flex flex-col gap-1.5 max-w-sm">
+          <h3 className="font-serif text-xl font-extrabold text-white">In Development Pipeline</h3>
+          <p className="text-sm text-slate-200 font-normal leading-relaxed">
+            Early-stage software products currently in stealth engineering and active client trial.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1 max-w-xl">
+          {UPCOMING.map((item) => (
+            <div
+              key={item.id}
+              className="p-4 rounded-xl border border-white/15 bg-slate-900/80 flex flex-col gap-2 shadow-md"
+            >
+              <div className="flex items-center justify-between">
+                <h4 className="font-serif text-base font-bold text-white">{item.title}</h4>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-amber-400/30 bg-amber-400/10 font-mono text-[10px] text-amber-300 font-bold uppercase tracking-wider">
+                  <span className="size-1.5 rounded-full bg-amber-300 animate-pulse" />
+                  {item.status}
+                </span>
+              </div>
+              <p className="text-xs text-slate-200 font-normal">{item.category}</p>
+            </div>
+          ))}
+        </div>
+      </aside>
     </section>
   );
 }
