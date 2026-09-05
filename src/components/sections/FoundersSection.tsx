@@ -150,7 +150,7 @@ export default function FoundersSection() {
                   <div className="flex items-center gap-2.5 overflow-hidden">
                     <div className="size-10 rounded-xl overflow-hidden shrink-0 border border-slate-200 shadow-sm">
                       <img
-                        src="/mazen-portfolio.png"
+                        src={`${import.meta.env.BASE_URL}mazen-portfolio.png`}
                         alt="Mazen Portfolio"
                         className="h-full w-full object-cover group-hover/port:scale-110 transition-transform duration-500"
                         onError={(e) => {
@@ -266,7 +266,7 @@ export default function FoundersSection() {
                   <div className="flex items-center gap-2.5 overflow-hidden">
                     <div className="size-10 rounded-xl overflow-hidden shrink-0 border border-slate-200 shadow-sm">
                       <img
-                        src="/tareq-portfolio.png"
+                        src={`${import.meta.env.BASE_URL}tareq-portfolio.png`}
                         alt="Tareq Portfolio"
                         className="h-full w-full object-cover group-hover/port:scale-110 transition-transform duration-500"
                         onError={(e) => {
