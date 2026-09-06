@@ -58,6 +58,21 @@ export default function GateSection() {
     let initialized = false;
     let disposed = false;
 
+    let cachedWidth = 0;
+    let cachedHeight = 0;
+    let cachedRectTop = 0;
+    let cachedRectHeight = 0;
+
+    const measureGeometry = () => {
+      if (!container || !stage) return;
+      cachedWidth = stage.clientWidth;
+      cachedHeight = stage.clientHeight;
+      const rect = container.getBoundingClientRect();
+      // Absolute document Y position
+      cachedRectTop = rect.top + window.scrollY;
+      cachedRectHeight = rect.height;
+    };
+
     const updateGrid = () => {
       if (!motionQuery.matches) {
         setShowGrid(true);
@@ -68,13 +83,14 @@ export default function GateSection() {
       frame = 0;
       if (disposed) return;
 
-      // Read geometry first. Re-measure document position so upstream layout shifts
-      // cannot leave the scroll target stale.
-      const rect = container.getBoundingClientRect();
-      const width = stage.clientWidth;
-      const height = stage.clientHeight;
+      // Read heavily cached geometry derived outside the RAF loop
+      // to eliminate 90ms+ forced reflows on iOS Safari and ensure silky 60fps.
+      const width = cachedWidth;
+      const height = cachedHeight;
       if (!width || !height) return;
-      const target = motionQuery.matches ? 0 : clamp(-rect.top / Math.max(1, rect.height - height));
+      
+      const currentScrollTop = window.scrollY - cachedRectTop;
+      const target = motionQuery.matches ? 0 : clamp(currentScrollTop / Math.max(1, cachedRectHeight - height));
       const dt = previousTime ? Math.min(64, time - previousTime) : 16;
       previousTime = time;
       if (!initialized || motionQuery.matches) {
@@ -156,13 +172,17 @@ export default function GateSection() {
       }, { rootMargin: "800px 0px" })
       : null;
     observer?.observe(container);
-    const resizeObserver = typeof ResizeObserver !== "undefined" ? new ResizeObserver(schedule) : null;
+    const resizeObserver = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => {
+      measureGeometry();
+      schedule();
+    }) : null;
     resizeObserver?.observe(stage);
     resizeObserver?.observe(document.body);
     window.addEventListener("scroll", schedule, { passive: true });
     window.addEventListener("resize", schedule, { passive: true });
     motionQuery.addEventListener("change", onPreferenceChange);
 
+    measureGeometry();
     updateGrid();
     schedule();
 
