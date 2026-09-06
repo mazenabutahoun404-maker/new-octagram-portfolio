@@ -115,9 +115,10 @@ export default function SmoothImageSequence() {
     if (!ctx) return;
 
     const dpr = Math.min(window.devicePixelRatio || 1, 2); // Cap at 2
-    const rect = canvas.getBoundingClientRect();
-    const cw = rect.width;
-    const ch = rect.height;
+    
+    // Direct viewport dimensions prevent synchronous Forced Reflow penalties
+    const cw = window.innerWidth;
+    const ch = window.innerHeight;
 
     if (canvas.width !== Math.round(cw * dpr) || canvas.height !== Math.round(ch * dpr)) {
       canvas.width = Math.round(cw * dpr);

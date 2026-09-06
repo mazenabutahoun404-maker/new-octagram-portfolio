@@ -290,48 +290,49 @@ export default function RefImageNavBar({ jumpTo }: RefImageNavBarProps) {
   const navItems = isMobile ? allNavItems.slice(0, 5) : allNavItems;
 
   useEffect(() => {
-    let ticking = false;
-    const scrollTask = () => {
-      const navTriggerY = 140;
-      const allIds = [
-        "hero",
-        "about",
-        "solutions",
-        "founders",
-        "gate",
-        "projects",
-        "vision",
-        "impact",
-        "partners",
-        "contact",
-      ];
+    const allIds = [
+      "hero",
+      "about",
+      "solutions",
+      "founders",
+      "gate",
+      "projects",
+      "vision",
+      "impact",
+      "partners",
+      "contact",
+    ];
 
-      for (let i = allIds.length - 1; i >= 0; i--) {
-        const el = document.getElementById(allIds[i]);
-        if (el) {
-          const rect = el.getBoundingClientRect();
-          if (rect.top <= navTriggerY) {
-            setActiveTab(allIds[i]);
-            ticking = false;
-            return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // Find the visible entry with the highest intersection ratio
+        let bestMatch = null;
+        let highestRatio = 0;
+        
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && entry.intersectionRatio > highestRatio) {
+            highestRatio = entry.intersectionRatio;
+            bestMatch = entry.target.id;
           }
+        });
+        
+        if (bestMatch) {
+          setActiveTab(bestMatch);
         }
+      },
+      { 
+        root: null, 
+        rootMargin: "-10% 0px -40% 0px",
+        threshold: [0, 0.1, 0.2, 0.5] 
       }
-      setActiveTab("hero");
-      ticking = false;
-    };
+    );
 
-    const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(scrollTask);
-        ticking = true;
-      }
-    };
+    allIds.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) observer.observe(el);
+    });
 
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll();
-
-    return () => window.removeEventListener("scroll", handleScroll);
+    return () => observer.disconnect();
   }, []);
 
   return (
