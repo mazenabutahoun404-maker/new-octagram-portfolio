@@ -44,9 +44,6 @@ export default function GateSection() {
   const [showGrid, setShowGrid] = useState(false);
   const instanceId = useId().replace(/:/g, "");
   const maskId = `octa-gate-mask-${instanceId}`;
-  const gradId = `octa-gate-grad-${instanceId}`;
-  const stop2Ref = useRef<SVGStopElement>(null);
-  const stop3Ref = useRef<SVGStopElement>(null);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -111,13 +108,7 @@ export default function GateSection() {
         hole.setAttribute("rx", String(24 * scale));
       }
 
-      // Smoothly fade the white SVG background to transparent around the bottom of the portal hole
-      // so no white background corners bleed out at the bottom left and bottom right.
       const holeBottom = centerY + holeHeight / 2;
-      const fadeStart = Math.max(0, Math.min(100, ((holeBottom - 40) / height) * 100));
-      const fadeEnd = Math.max(0, Math.min(100, ((holeBottom + 10) / height) * 100));
-      if (stop2Ref.current) stop2Ref.current.setAttribute("offset", `${fadeStart}%`);
-      if (stop3Ref.current) stop3Ref.current.setAttribute("offset", `${fadeEnd}%`);
 
       if (frameRef.current) {
         Object.assign(frameRef.current.style, {
@@ -197,13 +188,8 @@ export default function GateSection() {
                 <rect width="100%" height="100%" fill="white" />
                 <rect ref={holeRef} x="8%" y="35%" width="84%" height="40%" rx="24" fill="black" />
               </mask>
-              <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#f0f9ff" stopOpacity="1" />
-                <stop ref={stop2Ref} offset="40%" stopColor="#f0f9ff" stopOpacity="1" />
-                <stop ref={stop3Ref} offset="55%" stopColor="#f0f9ff" stopOpacity="0" />
-              </linearGradient>
             </defs>
-            <rect width="100%" height="100%" fill={`url(#${gradId})`} mask={`url(#${maskId})`} />
+            <rect width="100%" height="100%" fill="#f0f9ff" mask={`url(#${maskId})`} />
           </svg>
           <div ref={gridRef} className="octa-gate__grid" aria-hidden="true">
             {showGrid && (
