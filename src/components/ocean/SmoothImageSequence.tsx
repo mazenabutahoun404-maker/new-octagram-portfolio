@@ -8,6 +8,7 @@ export default function SmoothImageSequence() {
   // Storage for loaded Image objects
   const cacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
   const pendingRef = useRef<Map<string, Promise<HTMLImageElement>>>(new Map());
+  const preloadTimerRef = useRef<number | ReturnType<typeof setTimeout> | null>(null);
 
   const renderRequestedRef = useRef(false);
   const currentDrawKeyRef = useRef<string | null>(null);
@@ -53,9 +54,19 @@ export default function SmoothImageSequence() {
     return Math.round(localProgress * totalFrames);
   };
 
+  const MAX_CACHE_SIZE = 40;
+
   const loadFrame = async (chapter: SequenceChapter, selected: SelectedFrames, index: number): Promise<HTMLImageElement> => {
     const key = `${chapter.id}:${selected.variant}:${index}`;
-    if (cacheRef.current.has(key)) return cacheRef.current.get(key)!;
+    
+    // LRU Cache mechanism: if it exists, delete and re-insert so it becomes the newest
+    if (cacheRef.current.has(key)) {
+      const img = cacheRef.current.get(key)!;
+      cacheRef.current.delete(key);
+      cacheRef.current.set(key, img);
+      return img;
+    }
+    
     if (pendingRef.current.has(key)) return pendingRef.current.get(key)!;
 
     const promise = new Promise<HTMLImageElement>((resolve) => {
@@ -63,6 +74,13 @@ export default function SmoothImageSequence() {
       img.decoding = "async";
       img.onload = () => {
         cacheRef.current.set(key, img);
+        
+        // Enforce max cache size by deleting the oldest item (first item in Map)
+        if (cacheRef.current.size > MAX_CACHE_SIZE) {
+          const oldestKey = cacheRef.current.keys().next().value;
+          if (oldestKey) cacheRef.current.delete(oldestKey);
+        }
+        
         pendingRef.current.delete(key);
         resolve(img);
       };
@@ -218,12 +236,26 @@ export default function SmoothImageSequence() {
       momentumRafRef.current = requestAnimationFrame(momentumLoop);
     }
 
-    // Preload surrounding frames based on raw scroll progress
+    // Preload surrounding frames based on raw scroll progress with throttling
     const schedulePreload = () => {
-      if ('requestIdleCallback' in window) {
-        window.requestIdleCallback(() => preloadSurrounding(chapter, selected, frameIndex), { timeout: 100 });
+      if (preloadTimerRef.current !== null) {
+        if (typeof window.cancelIdleCallback === "function") {
+          window.cancelIdleCallback(preloadTimerRef.current as number);
+        } else {
+          clearTimeout(preloadTimerRef.current as ReturnType<typeof setTimeout>);
+        }
+      }
+
+      if (typeof window.requestIdleCallback === "function") {
+        preloadTimerRef.current = window.requestIdleCallback(() => {
+          preloadSurrounding(chapter, selected, frameIndex);
+          preloadTimerRef.current = null;
+        }, { timeout: 150 });
       } else {
-        setTimeout(() => preloadSurrounding(chapter, selected, frameIndex), 50);
+        preloadTimerRef.current = setTimeout(() => {
+          preloadSurrounding(chapter, selected, frameIndex);
+          preloadTimerRef.current = null;
+        }, 150);
       }
     };
     schedulePreload();

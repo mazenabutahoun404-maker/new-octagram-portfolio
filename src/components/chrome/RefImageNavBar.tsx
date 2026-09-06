@@ -341,7 +341,7 @@ export default function RefImageNavBar({ jumpTo }: RefImageNavBarProps) {
         whileTap={prefersReducedMotion ? undefined : { scale: 0.94 }}
         aria-label="Return to the Octagram homepage"
         aria-current={activeTab === "hero" ? "page" : undefined}
-        className={`group pointer-events-auto absolute top-4 left-3 z-[71] grid size-[46px] sm:size-[58px] place-items-center rounded-full border backdrop-blur-[28px] shadow-sm sm:left-5 lg:left-8 ${
+        className={`group pointer-events-auto absolute top-4 left-3 z-[71] hidden sm:grid size-[46px] sm:size-[58px] place-items-center rounded-full border backdrop-blur-[28px] shadow-sm sm:left-5 lg:left-8 ${
           isLightSection
             ? activeTab === "hero"
               ? "border-slate-600 bg-slate-800 shadow-md"
@@ -455,7 +455,7 @@ export default function RefImageNavBar({ jumpTo }: RefImageNavBarProps) {
         onMouseLeave={contactBubble.onMouseLeave}
         whileTap={prefersReducedMotion ? undefined : { scale: 0.94 }}
         aria-label="Get in touch with Octagram"
-        className={`group pointer-events-auto absolute top-4 right-3 z-[71] grid size-[46px] sm:size-[58px] place-items-center rounded-full border backdrop-blur-[28px] shadow-sm sm:right-5 lg:right-8 transition-colors duration-300 ${
+        className={`group pointer-events-auto absolute top-4 right-3 z-[71] hidden sm:grid size-[46px] sm:size-[58px] place-items-center rounded-full border backdrop-blur-[28px] shadow-sm sm:right-5 lg:right-8 transition-colors duration-300 ${
           isLightSection
             ? "border-slate-800 bg-slate-900/80 hover:border-slate-500 text-white"
             : "border-cyan-400/40 bg-[radial-gradient(circle_at_32%_20%,rgba(0,245,212,.32),rgba(255,255,255,.08))] text-cyan-300 backdrop-saturate-[1.55] shadow-[inset_0_1.5px_2px_rgba(255,255,255,.65),inset_0_-1px_2px_rgba(0,0,0,.35),0_14px_36px_rgba(0,245,212,.2)] hover:border-cyan-300"
