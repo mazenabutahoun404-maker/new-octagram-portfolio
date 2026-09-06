@@ -389,16 +389,12 @@ export default function RefImageNavBar({ jumpTo }: RefImageNavBarProps) {
           aria-label="Primary navigation"
           className={`pointer-events-auto z-[80] ${
             isMobile
-              ? `fixed bottom-0 left-0 right-0 flex h-auto items-center justify-center rounded-t-2xl border-t px-2 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 backdrop-blur-[28px] ${
-                  isLightSection
-                    ? "border-slate-700 bg-[rgba(10,13,20,0.95)] shadow-[0_-8px_30px_rgba(0,0,0,0.3)]"
-                    : "border-white/20 bg-[rgba(5,10,20,0.92)] shadow-[0_-8px_30px_rgba(0,0,0,0.4)]"
-                }`
-              : `absolute top-4 left-1/2 -translate-x-1/2 flex h-[58px] w-max max-w-[calc(100vw-190px)] items-center rounded-full border px-2 backdrop-blur-[28px] transition-colors duration-300 ${
-                  isLightSection
-                    ? "border-slate-700 bg-[rgba(10,13,20,0.85)] shadow-xl"
-                    : "border-white/35 bg-[linear-gradient(145deg,rgba(255,255,255,.17),rgba(255,255,255,.085))] backdrop-saturate-[1.55] shadow-[inset_0_1.5px_2px_rgba(255,255,255,.55),inset_0_-1px_2px_rgba(0,0,0,.25),0_16px_40px_rgba(0,8,15,.28)]"
-                }`
+              ? "fixed bottom-6 left-1/2 -translate-x-1/2 flex h-[58px] w-max max-w-[calc(100vw-32px)] items-center rounded-full border px-1.5 backdrop-blur-[28px] transition-colors duration-300"
+              : "absolute top-4 left-1/2 -translate-x-1/2 flex h-[58px] w-max max-w-[calc(100vw-190px)] items-center rounded-full border px-2 backdrop-blur-[28px] transition-colors duration-300"
+          } ${
+            isLightSection
+              ? "border-slate-700 bg-[rgba(10,13,20,0.85)] shadow-xl"
+              : "border-white/35 bg-[linear-gradient(145deg,rgba(255,255,255,.17),rgba(255,255,255,.085))] backdrop-saturate-[1.55] shadow-[inset_0_1.5px_2px_rgba(255,255,255,.55),inset_0_-1px_2px_rgba(0,0,0,.25),0_16px_40px_rgba(0,8,15,.28)]"
           }`}
           onMouseMove={(event: React.MouseEvent<HTMLElement>) =>
             mouseX.set(event.clientX)

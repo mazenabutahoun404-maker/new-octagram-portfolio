@@ -78,7 +78,7 @@ export default function KineticGrid(props: KineticGridProps) {
       const r = host.getBoundingClientRect();
       W = Math.max(1, Math.floor(mw ?? r.width));
       H = Math.max(1, Math.floor(mh ?? r.height));
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5); // Cap at 1.5 to prevent mobile OOM crashes on high-res displays
       canvas.width = Math.floor(W * dpr);
       canvas.height = Math.floor(H * dpr);
       canvas.style.width = W + "px";
@@ -193,7 +193,7 @@ export default function KineticGrid(props: KineticGridProps) {
               )
             : 0;
           if (right) {
-            ctx.globalAlpha = 0.05 + prox * 0.6;
+            ctx.globalAlpha = 0.15 + prox * 0.5; // Boosted baseline from 0.05
             ctx.strokeStyle = lineColor;
             ctx.lineWidth = 0.5 + prox * 1.5;
             ctx.beginPath();
@@ -202,7 +202,7 @@ export default function KineticGrid(props: KineticGridProps) {
             ctx.stroke();
           }
           if (down) {
-            ctx.globalAlpha = 0.05 + prox * 0.6;
+            ctx.globalAlpha = 0.15 + prox * 0.5; // Boosted baseline from 0.05
             ctx.strokeStyle = lineColor;
             ctx.lineWidth = 0.5 + prox * 1.5;
             ctx.beginPath();
@@ -221,7 +221,7 @@ export default function KineticGrid(props: KineticGridProps) {
               1 - Math.sqrt((m.x - d.x) ** 2 + (m.y - d.y) ** 2) / R
             )
           : 0;
-        ctx.globalAlpha = 0.18 + prox * 0.75;
+        ctx.globalAlpha = 0.35 + prox * 0.65; // Boosted baseline from 0.18
         ctx.fillStyle = dotColor;
         ctx.beginPath();
         ctx.arc(d.x, d.y, 0.8 + prox * 2.2, 0, 2 * Math.PI);

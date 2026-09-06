@@ -78,7 +78,7 @@ export default function HeroSection({ jumpTo }: HeroSectionProps) {
           transform: `translateY(${contentTranslateY}px)`,
           pointerEvents: contentOpacity > 0.05 ? "auto" : "none",
         }}
-        className="absolute inset-x-5 bottom-[clamp(28px,6vh,58px)] z-[5] mx-auto grid max-w-[1340px] grid-cols-1 items-end gap-10 transition-opacity duration-100 sm:inset-x-8 lg:inset-x-[4vw] lg:grid-cols-[minmax(300px,.72fr)_minmax(0,1.45fr)] lg:gap-[clamp(30px,4vw,68px)]"
+        className="absolute inset-x-5 bottom-[clamp(120px,14vh,160px)] sm:bottom-[clamp(28px,6vh,58px)] z-[5] mx-auto grid max-w-[1340px] grid-cols-1 items-end gap-[clamp(20px,4vh,40px)] transition-opacity duration-100 sm:inset-x-8 lg:inset-x-[4vw] lg:grid-cols-[minmax(300px,.72fr)_minmax(0,1.45fr)] lg:gap-[clamp(30px,4vw,68px)]"
       >
         <div className="relative min-w-0 lg:pb-1">
           <p className="inline-flex items-center gap-2 rounded-full border border-emerald-100/40 bg-cyan-950/30 px-3.5 py-2 font-mono text-xs font-bold tracking-[.18em] text-emerald-200 uppercase backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,.3),0_10px_28px_rgba(0,8,14,.25)]">
@@ -86,7 +86,7 @@ export default function HeroSection({ jumpTo }: HeroSectionProps) {
             ENTERPRISE TECHNOLOGY &amp; PRODUCT STUDIO
           </p>
 
-          <h1 id="hero-title" className="mt-4 max-w-[540px] text-[clamp(2.6rem,12vw,4.7rem)] leading-[.85] font-semibold tracking-[-.075em] text-white [text-shadow:0_5px_30px_rgba(0,4,10,.7)] sm:text-[clamp(3.8rem,9vw,5.1rem)] lg:text-[clamp(3.15rem,4.25vw,4.65rem)]">
+          <h1 id="hero-title" className="mt-4 max-w-[540px] text-[clamp(2.4rem,10vw,4.7rem)] leading-[.95] font-semibold tracking-[-.075em] text-white [text-shadow:0_5px_30px_rgba(0,4,10,.7)] sm:text-[clamp(3.8rem,9vw,5.1rem)] lg:text-[clamp(3.15rem,4.25vw,4.65rem)]">
             Architecting
             <br />
             digital <em className="font-serif font-normal text-transparent [-webkit-text-stroke:1px_rgba(226,255,249,.98)] sm:[-webkit-text-stroke:1.2px_rgba(226,255,249,.98)]">futures.</em>

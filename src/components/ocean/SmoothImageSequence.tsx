@@ -61,7 +61,7 @@ export default function SmoothImageSequence() {
 
   const [profile] = useState(() => detectCapability());
   const isMobile = viewportWidth < 768;
-  const MAX_CACHE_SIZE = isMobile ? 16 : Math.min(profile.maxCachedFrames, 40);
+  const MAX_CACHE_SIZE = isMobile ? 10 : Math.min(profile.maxCachedFrames, 40);
 
   const loadFrame = async (chapter: SequenceChapter, selected: SelectedFrames, index: number): Promise<HTMLImageElement> => {
     const key = `${chapter.id}:${selected.variant}:${index}`;
@@ -155,7 +155,7 @@ export default function SmoothImageSequence() {
   };
 
   // Preload batching optimization
-  const preloadRadius = isMobile ? 5 : Math.min(profile.preloadRadius, 8);
+  const preloadRadius = isMobile ? 2 : Math.min(profile.preloadRadius, 8);
   const preloadSurrounding = (chapter: SequenceChapter, selected: SelectedFrames, currentIndex: number) => {
     const max = selected.sources.length - 1;
     for (let offset = 1; offset <= preloadRadius; offset++) {

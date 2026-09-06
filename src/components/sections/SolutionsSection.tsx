@@ -82,7 +82,8 @@ export default function SolutionsSection() {
             return (
               <article
                 key={solution.title}
-                className={`p-6 md:p-8 rounded-3xl border border-slate-200 bg-white/70 backdrop-blur-md ${meta.border} shadow-sm hover:shadow-xl transition-all duration-[600ms] flex flex-col group relative overflow-hidden h-max cursor-default`}
+                tabIndex={0}
+                className={`p-6 md:p-8 rounded-3xl border border-slate-200 bg-white/70 backdrop-blur-md ${meta.border} shadow-sm hover:shadow-xl transition-all duration-[600ms] flex flex-col group relative overflow-hidden h-max cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400`}
               >
                 {/* Header Info */}
                 <div className="flex flex-col gap-4">
