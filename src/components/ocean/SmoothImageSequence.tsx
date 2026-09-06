@@ -20,6 +20,10 @@ export default function SmoothImageSequence() {
   const targetProgressRef = useRef(0);
   const momentumRafRef = useRef<number | null>(null);
 
+  // Track render sequences to prevent dropped frames from out-of-order fetch resolutions
+  const renderSeqRef = useRef(0);
+  const drawnSeqRef = useRef(0);
+
   const prefersReducedMotion = useReducedMotion();
   const [viewportWidth, setViewportWidth] = useState(window.innerWidth);
 
@@ -57,7 +61,7 @@ export default function SmoothImageSequence() {
 
   const [profile] = useState(() => detectCapability());
   const isMobile = viewportWidth < 768;
-  const MAX_CACHE_SIZE = isMobile ? 12 : Math.min(profile.maxCachedFrames, 40);
+  const MAX_CACHE_SIZE = isMobile ? 16 : Math.min(profile.maxCachedFrames, 40);
 
   const loadFrame = async (chapter: SequenceChapter, selected: SelectedFrames, index: number): Promise<HTMLImageElement> => {
     const key = `${chapter.id}:${selected.variant}:${index}`;
@@ -150,7 +154,7 @@ export default function SmoothImageSequence() {
   };
 
   // Preload batching optimization
-  const preloadRadius = isMobile ? 3 : Math.min(profile.preloadRadius, 8);
+  const preloadRadius = isMobile ? 5 : Math.min(profile.preloadRadius, 8);
   const preloadSurrounding = (chapter: SequenceChapter, selected: SelectedFrames, currentIndex: number) => {
     const max = selected.sources.length - 1;
     for (let offset = 1; offset <= preloadRadius; offset++) {
@@ -226,11 +230,18 @@ export default function SmoothImageSequence() {
         const k = `${ch.id}:${sel.variant}:${fi}`;
         lastRequestedKeyRef.current = k;
 
+        const seq = ++renderSeqRef.current;
+
         if (cacheRef.current.has(k)) {
+          drawnSeqRef.current = Math.max(drawnSeqRef.current, seq);
           requestDraw(cacheRef.current.get(k)!, k);
         } else {
           loadFrame(ch, sel, fi).then((img) => {
-            if (lastRequestedKeyRef.current === k) requestDraw(img, k);
+            // Paint delayed frames to maintain visual continuity, as long as a more recent frame hasn't overridden it
+            if (seq > drawnSeqRef.current) {
+              drawnSeqRef.current = seq;
+              requestDraw(img, k);
+            }
           });
         }
 

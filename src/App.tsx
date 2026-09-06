@@ -75,13 +75,27 @@ export default function App() {
   // Massively optimize CPU/GPU rendering resources by explicitly pausing the Hero video 
   // when it securely scrolls off-screen.
   useEffect(() => {
-    const handleScroll = () => {
-      const heroVideo = document.querySelector('[data-hero-video]') as HTMLVideoElement;
-      if (!heroVideo) return;
+    let ticking = false;
+    let heroVideo: HTMLVideoElement | null = null;
+    
+    const checkVideoState = () => {
+      if (!heroVideo) heroVideo = document.querySelector('[data-hero-video]') as HTMLVideoElement;
+      if (!heroVideo) {
+        ticking = false;
+        return;
+      }
       if (window.scrollY > window.innerHeight * 1.5) {
         if (!heroVideo.paused) heroVideo.pause();
       } else {
         if (heroVideo.paused) heroVideo.play().catch(e => { });
+      }
+      ticking = false;
+    };
+
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(checkVideoState);
+        ticking = true;
       }
     };
     window.addEventListener("scroll", handleScroll, { passive: true });

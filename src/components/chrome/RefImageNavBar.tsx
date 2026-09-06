@@ -186,7 +186,6 @@ function DockItem({
 
 export default function RefImageNavBar({ jumpTo }: RefImageNavBarProps) {
   const [activeTab, setActiveTab] = useState("hero");
-  const [isMobileExpanded, setIsMobileExpanded] = useState(false);
   const [isGateZooming, setIsGateZooming] = useState(false);
   const mouseX = useMotionValue(Number.POSITIVE_INFINITY);
   const prefersReducedMotion = useReducedMotion();
@@ -215,12 +214,11 @@ export default function RefImageNavBar({ jumpTo }: RefImageNavBarProps) {
     (id: string) => {
       setActiveTab(id);
       jumpTo(id);
-      setIsMobileExpanded(false);
     },
     [jumpTo]
   );
 
-  const navItems: DockItemData[] = useMemo(
+  const allNavItems: DockItemData[] = useMemo(
     () => [
       {
         id: "about",
@@ -289,8 +287,11 @@ export default function RefImageNavBar({ jumpTo }: RefImageNavBarProps) {
     [handleNavClick]
   );
 
+  const navItems = isMobile ? allNavItems.slice(0, 5) : allNavItems;
+
   useEffect(() => {
-    const handleScroll = () => {
+    let ticking = false;
+    const scrollTask = () => {
       const navTriggerY = 140;
       const allIds = [
         "hero",
@@ -311,11 +312,20 @@ export default function RefImageNavBar({ jumpTo }: RefImageNavBarProps) {
           const rect = el.getBoundingClientRect();
           if (rect.top <= navTriggerY) {
             setActiveTab(allIds[i]);
+            ticking = false;
             return;
           }
         }
       }
       setActiveTab("hero");
+      ticking = false;
+    };
+
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(scrollTask);
+        ticking = true;
+      }
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -370,7 +380,7 @@ export default function RefImageNavBar({ jumpTo }: RefImageNavBarProps) {
       </motion.button>
 
       {/* Section dock — DESKTOP: top centered pill · MOBILE: full-width bottom sheet */}
-      {(!isMobile || isMobileExpanded) ? (
+      
         <motion.nav
           initial={{ opacity: 0, y: isMobile ? 20 : -20, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -413,33 +423,9 @@ export default function RefImageNavBar({ jumpTo }: RefImageNavBarProps) {
                 {item.icon}
               </DockItem>
             ))}
-            {isMobile && (
-              <button
-                type="button"
-                onClick={() => setIsMobileExpanded(false)}
-                className="flex size-[38px] shrink-0 items-center justify-center rounded-full border border-white/20 text-white/80 active:bg-white/10"
-              >
-                <svg className="size-4 stroke-current stroke-2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-              </button>
-            )}
+            {/* Removed expand/collapse button for 5-tap mobile behavior */}
           </div>
         </motion.nav>
-      ) : (
-        <motion.button
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          onClick={() => setIsMobileExpanded(true)}
-          className={`pointer-events-auto fixed bottom-5 left-1/2 z-[80] -translate-x-1/2 flex h-[50px] items-center gap-3 rounded-full border px-5 backdrop-blur-[28px] shadow-lg transition-colors duration-300 ${
-            isLightSection
-              ? "border-slate-700 bg-slate-900/95 text-white"
-              : "border-white/35 bg-white/10 text-white backdrop-saturate-[1.5] shadow-[inset_0_1.5px_2px_rgba(255,255,255,.3),0_8px_20px_rgba(0,10,20,.4)]"
-          }`}
-          style={{ paddingBottom: "max(0px, env(safe-area-inset-bottom))" }}
-        >
-          <svg className="size-4 stroke-current stroke-2" viewBox="0 0 24 24"><path strokeLinecap="round" d="M4 6h16M4 12h16M4 18h16" /></svg>
-          <span className="font-mono text-xs font-bold tracking-[.15em] uppercase">Menu</span>
-        </motion.button>
-      )}
 
       {/* Top-Right Quick Contact Action Button */}
       <motion.button
