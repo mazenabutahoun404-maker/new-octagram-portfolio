@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useScroll, useMotionValueEvent, useReducedMotion } from "framer-motion";
 import { sequences, selectFrames, type SequenceChapter, type SelectedFrames } from "../../lib/oceanSequences";
+import { detectCapability } from "../../lib/capability";
 
 export default function SmoothImageSequence() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -54,7 +55,9 @@ export default function SmoothImageSequence() {
     return Math.round(localProgress * totalFrames);
   };
 
-  const MAX_CACHE_SIZE = 40;
+  const [profile] = useState(() => detectCapability());
+  const isMobile = viewportWidth < 768;
+  const MAX_CACHE_SIZE = isMobile ? 12 : Math.min(profile.maxCachedFrames, 40);
 
   const loadFrame = async (chapter: SequenceChapter, selected: SelectedFrames, index: number): Promise<HTMLImageElement> => {
     const key = `${chapter.id}:${selected.variant}:${index}`;
@@ -78,7 +81,13 @@ export default function SmoothImageSequence() {
         // Enforce max cache size by deleting the oldest item (first item in Map)
         if (cacheRef.current.size > MAX_CACHE_SIZE) {
           const oldestKey = cacheRef.current.keys().next().value;
-          if (oldestKey) cacheRef.current.delete(oldestKey);
+          if (oldestKey) {
+            const oldestImg = cacheRef.current.get(oldestKey);
+            if (oldestImg) {
+              oldestImg.src = ""; // Force browser to immediately release image memory
+            }
+            cacheRef.current.delete(oldestKey);
+          }
         }
         
         pendingRef.current.delete(key);
@@ -141,7 +150,7 @@ export default function SmoothImageSequence() {
   };
 
   // Preload batching optimization
-  const preloadRadius = 8;
+  const preloadRadius = isMobile ? 3 : Math.min(profile.preloadRadius, 8);
   const preloadSurrounding = (chapter: SequenceChapter, selected: SelectedFrames, currentIndex: number) => {
     const max = selected.sources.length - 1;
     for (let offset = 1; offset <= preloadRadius; offset++) {
