@@ -54,7 +54,6 @@ export default function GateSection() {
     if (!container || !stage) return;
 
     const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const desktopQuery = window.matchMedia("(min-width: 768px)");
     let visible = true;
     let frame = 0;
     let previousTime = 0;
@@ -63,7 +62,7 @@ export default function GateSection() {
     let disposed = false;
 
     const updateGrid = () => {
-      if (desktopQuery.matches && !motionQuery.matches) {
+      if (!motionQuery.matches) {
         setShowGrid(true);
       }
     };
@@ -172,7 +171,7 @@ export default function GateSection() {
     window.addEventListener("scroll", schedule, { passive: true });
     window.addEventListener("resize", schedule, { passive: true });
     motionQuery.addEventListener("change", onPreferenceChange);
-    desktopQuery.addEventListener("change", onPreferenceChange);
+
     updateGrid();
     schedule();
 
@@ -184,7 +183,6 @@ export default function GateSection() {
       window.removeEventListener("scroll", schedule);
       window.removeEventListener("resize", schedule);
       motionQuery.removeEventListener("change", onPreferenceChange);
-      desktopQuery.removeEventListener("change", onPreferenceChange);
     };
   }, []);
 
